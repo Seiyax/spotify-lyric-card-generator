@@ -1,0 +1,1760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spotify Lyric Card Generator</title>
+<meta name="description" content="Create beautiful Spotify-style lyric cards and download them as flat or 3D PNGs.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* =========================================================
+   DESIGN TOKENS
+   ========================================================= */
+:root {
+  --bg: #121212;
+  --panel: #1e1e1e;
+  --panel-2: #262626;
+  --border: #333333;
+  --text: #ffffff;
+  --muted: #b3b3b3;
+  --green: #1db954;
+  --green-hover: #1ed760;
+  --radius: 12px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body { height: 100%; }
+
+body {
+  font-family: 'Poppins', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* =========================================================
+   SPLIT-SCREEN LAYOUT
+   ========================================================= */
+.app {
+  display: grid;
+  grid-template-columns: 400px 1fr;
+  height: 100vh;
+  overflow: hidden;                 /* blocks focus-induced page scrolling */
+}
+
+/* ---------- Control panel (left) ---------- */
+.panel {
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.panel__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 22px 24px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.panel__header svg { width: 34px; height: 34px; flex: none; }
+.panel__header h1 { font-size: 17px; font-weight: 700; line-height: 1.2; }
+.panel__header p  { font-size: 12px; color: var(--muted); }
+
+.panel__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px 8px;
+  scrollbar-width: thin;
+  scrollbar-color: #444 transparent;
+}
+.panel__body::-webkit-scrollbar { width: 10px; }
+.panel__body::-webkit-scrollbar-track { background: transparent; }
+.panel__body::-webkit-scrollbar-thumb { background: #3a3a3a; border-radius: 10px; border: 3px solid var(--panel); }
+.panel__body::-webkit-scrollbar-thumb:hover { background: var(--green); }
+.spin { display:inline-block; width:12px; height:12px; margin-right:6px; vertical-align:-2px; border:2px solid rgba(0,0,0,.3); border-top-color:#000; border-radius:50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.stage__reset { position:absolute; top:20px; right:24px; z-index:2; background:rgba(255,255,255,.06); backdrop-filter:blur(6px); }
+.scene { cursor: grab; touch-action: none; user-select: none; }
+.scene.dragging { cursor: grabbing; }
+.scene.dragging .card-3d { transition: none; }
+.seg { display:grid; grid-template-columns:1fr 1fr; gap:4px; padding:4px; background:var(--panel-2); border:1px solid var(--border); border-radius:500px; }
+.seg__btn { appearance:none; border:0; background:transparent; color:var(--muted); font:500 13px 'Poppins',sans-serif; padding:8px 12px; border-radius:500px; cursor:pointer; transition:background .15s,color .15s,transform .12s; }
+.seg__btn:hover { color:#fff; }
+.seg__btn:active { transform:scale(.97); }
+.seg__btn.active { background:var(--green); color:#000; font-weight:600; }
+.seg__btn:focus-visible { outline:3px solid rgba(29,185,84,.5); outline-offset:2px; }
+.tilt-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+.tilt-head .section__title { margin:0; }
+.btn-reset { appearance:none; background:transparent; color:var(--muted); border:1px solid #444; border-radius:500px; padding:4px 12px; font:500 12px 'Poppins',sans-serif; cursor:pointer; transition:color .15s,border-color .15s,transform .12s; }
+.btn-reset:hover { color:#fff; border-color:#fff; }
+.btn-reset:active { transform:scale(.96); }
+.btn-reset:focus-visible { outline:3px solid rgba(29,185,84,.5); outline-offset:2px; }
+.tilt-row { display:grid; grid-template-columns:84px 1fr 52px; align-items:center; gap:12px; margin-bottom:12px; font-size:12px; color:var(--muted); }
+.tilt-row output { text-align:right; color:var(--text); font-variant-numeric:tabular-nums; }
+
+.section { margin-bottom: 22px; }
+.section__title {
+  font-size: 11px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--green);
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.field { margin-bottom: 14px; }
+.field label, .field .label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+input[type="text"], textarea {
+  width: 100%;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font: 400 14px 'Poppins', sans-serif;
+  padding: 11px 13px;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+input[type="text"]::placeholder, textarea::placeholder { color: #777; }
+input[type="text"]:focus, textarea:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(29, 185, 84, .18);
+}
+textarea { min-height: 150px; resize: vertical; line-height: 1.5; }
+
+.hint { font-size: 11.5px; color: var(--muted); margin-top: 6px; line-height: 1.45; }
+.hint.error { color: #ff7b7b; }
+.hint.ok { color: var(--green); }
+
+/* ---------- Search & Auto-fill ---------- */
+.search-card {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+.search-card .section__title { margin-bottom: 4px; }
+.search-card__sub {
+  font-size: 11.5px;
+  color: var(--muted);
+  line-height: 1.45;
+  margin-bottom: 12px;
+}
+.search-card input[type="text"] { background: var(--panel); }
+.search-card .hint:empty { display: none; }
+
+.search-row { display: flex; align-items: stretch; gap: 8px; }
+.search-row input[type="text"] { flex: 1; min-width: 0; }
+
+.btn-sm {
+  appearance: none;
+  flex: none;
+  border: 0;
+  border-radius: 500px;
+  padding: 0 18px;
+  min-width: 84px;
+  background: var(--green);
+  color: #000;
+  font: 600 13px 'Poppins', sans-serif;
+  cursor: pointer;
+  transition: background .15s, transform .12s;
+}
+.btn-sm:hover { background: var(--green-hover); }
+.btn-sm:active { transform: scale(.97); }
+.btn-sm:focus-visible { outline: 3px solid rgba(29,185,84,.5); outline-offset: 2px; }
+.btn-sm:hover:not(:disabled) { box-shadow: 0 4px 14px rgba(29,185,84,.35); }
+.btn-sm:disabled { opacity: .6; cursor: progress; transform: none; }
+
+.link-toggle {
+  appearance: none;
+  background: none;
+  border: 0;
+  color: var(--muted);
+  font: 500 12px 'Poppins', sans-serif;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  margin-top: 12px;
+  transition: color .15s;
+}
+.link-toggle:hover { color: #fff; }
+.link-toggle:focus-visible { outline: 3px solid rgba(29,185,84,.5); outline-offset: 3px; border-radius: 4px; }
+.link-toggle svg { width: 11px; height: 11px; transition: transform .15s; }
+.link-toggle[aria-expanded="true"] { color: var(--green); }
+.link-toggle[aria-expanded="true"] svg { transform: rotate(90deg); }
+
+.link-box { margin-top: 8px; }
+.link-box[hidden] { display: none; }
+
+/* ---------- Color picker ---------- */
+.swatches { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.swatch {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  outline: 1px solid rgba(255,255,255,.12);
+  cursor: pointer;
+  transition: transform .15s, border-color .15s;
+  padding: 0;
+}
+.swatch:hover { transform: scale(1.12); }
+.swatch.active { border-color: #fff; }
+
+.custom-color {
+  position: relative;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  overflow: hidden;
+  cursor: pointer;
+  background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red);
+  outline: 1px solid rgba(255,255,255,.12);
+}
+.custom-color input {
+  position: absolute; inset: -8px;
+  width: 48px; height: 48px;
+  opacity: 0; cursor: pointer;
+}
+.color-readout {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  text-transform: uppercase;
+}
+
+/* ---------- Checkboxes & range ---------- */
+.check {
+  position: relative;               /* keeps the hidden input inside the label */
+  display: flex; align-items: flex-start; gap: 10px;
+  cursor: pointer; user-select: none;
+  margin-bottom: 12px;
+}
+.check input { position: absolute; top: 0; left: 0; width: 20px; height: 20px; opacity: 0; pointer-events: none; }
+.check__box {
+  flex: none;
+  width: 20px; height: 20px;
+  border-radius: 5px;
+  border: 2px solid #5a5a5a;
+  display: grid; place-items: center;
+  margin-top: 1px;
+  transition: background .15s, border-color .15s;
+}
+.check__box svg { width: 12px; height: 12px; opacity: 0; transition: opacity .15s; }
+.check input:checked + .check__box { background: var(--green); border-color: var(--green); }
+.check input:checked + .check__box svg { opacity: 1; }
+.check input:focus-visible + .check__box { box-shadow: 0 0 0 3px rgba(29,185,84,.35); }
+.check__text { font-size: 13.5px; font-weight: 500; }
+.check__text small { display: block; font-size: 11.5px; font-weight: 400; color: var(--muted); margin-top: 2px; }
+
+.range-row { display: flex; align-items: center; gap: 12px; }
+.range-row output { min-width: 48px; text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; }
+input[type="range"] {
+  flex: 1; height: 4px;
+  accent-color: var(--green);
+  cursor: pointer;
+}
+.step {
+  flex: none; width: 30px; height: 30px;
+  border-radius: 50%;
+  border: 1.5px solid #5a5a5a;
+  background: transparent; color: var(--text);
+  font: 500 18px/1 'Poppins', sans-serif;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.step:hover { border-color: #fff; background: rgba(255,255,255,.06); }
+.step:focus-visible { outline: 3px solid rgba(29,185,84,.5); outline-offset: 2px; }
+input[type="range"]:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ---------- Download buttons ---------- */
+.panel__footer {
+  padding: 16px 24px 22px;
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: 10px;
+  background: var(--panel);
+}
+.btn {
+  appearance: none;
+  border: 0;
+  border-radius: 500px;
+  padding: 13px 20px;
+  font: 600 14px 'Poppins', sans-serif;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: transform .12s, background .15s, border-color .15s;
+}
+.btn svg { width: 18px; height: 18px; }
+.btn:active { transform: scale(.98); }
+.btn--primary { background: var(--green); color: #000; }
+.btn--primary:hover { background: var(--green-hover); }
+.btn--ghost { background: transparent; color: var(--text); border: 1.5px solid #5a5a5a; }
+.btn--ghost:hover { border-color: #fff; }
+.btn:focus-visible { outline: 3px solid rgba(29,185,84,.5); outline-offset: 2px; }
+.btn:disabled { opacity: .6; cursor: progress; }
+
+/* =========================================================
+   PREVIEW AREA (right)
+   ========================================================= */
+.stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  padding: 40px;
+  background:
+    radial-gradient(ellipse 60% 55% at 50% 45%, rgba(29,185,84,.10), transparent 70%),
+    radial-gradient(circle at 1px 1px, rgba(255,255,255,.05) 1px, transparent 0) 0 0 / 24px 24px,
+    var(--bg);
+  overflow: hidden;
+}
+
+.stage__badge {
+  position: absolute; top: 20px; left: 24px;
+  font-size: 12px; color: var(--muted);
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.08);
+  padding: 6px 12px; border-radius: 500px;
+  backdrop-filter: blur(6px);
+}
+.stage__tip {
+  position: absolute; bottom: 20px; left: 0; right: 0;
+  text-align: center; font-size: 12px; color: #777;
+}
+
+/*
+  SCENE: the perspective wrapper. The drop shadow lives here so it is cast
+  in screen space (straight down), exactly like the baked 3D export.
+  Size is capped so the whole tilted card always fits on screen; the canvas
+  still keeps its internal 1024x1024 resolution.
+*/
+.scene {
+  position: relative;
+  width: max(240px, min(560px, 100%, calc(100vh - 160px)));
+  aspect-ratio: 1 / 1;
+  perspective: 1200px;
+  filter:
+    drop-shadow(0 45px 40px rgba(0, 0, 0, .55))
+    drop-shadow(0 12px 14px rgba(0, 0, 0, .35));
+}
+
+/* The tilted card (canvas + glare) */
+.card-3d {
+  position: absolute;
+  inset: 0;
+  transform: rotateX(var(--rx, 12deg)) rotateY(var(--ry, -15deg)) rotateZ(var(--rz, 2deg));
+  transition: transform .12s ease-out;
+  will-change: transform;
+}
+
+
+.card-3d canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/*
+  Glass glare. <canvas> is a replaced element and cannot host ::after, so the
+  pseudo-element sits on the wrapper right above it. The radius is 48/1024 = 4.6875%
+  so the shine is clipped to the card's rounded corners.
+  --glare is generated from the same data the 3D export uses (see JS: GLARE).
+*/
+.card-3d::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 4.6875%;
+  background: var(--glare, linear-gradient(115deg, transparent 30%, rgba(255,255,255,.5) 45%, transparent 70%));
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+/* ---------- Toast ---------- */
+.toast {
+  position: fixed; bottom: 28px; left: 50%;
+  transform: translate(-50%, 20px);
+  background: #2a2a2a; color: #fff; border: 1px solid #3a3a3a; border-left: 4px solid var(--green);
+  box-shadow: 0 10px 30px rgba(0,0,0,.5);
+  font-size: 13px; font-weight: 500;
+  padding: 12px 20px; border-radius: 12px;
+  opacity: 0; pointer-events: none;
+  transition: opacity .25s, transform .25s;
+  z-index: 10;
+}
+.toast.error { border-left-color: #ff5c5c; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 900px) {
+  body { overflow: auto; }
+  .app { grid-template-columns: 1fr; height: auto; overflow: visible; }
+  .panel { border-right: 0; border-bottom: 1px solid var(--border); order: 2; }
+  .panel__body { overflow: visible; }
+  .stage { order: 1; padding: 70px 24px 60px; min-height: 70vh; }
+  .scene { width: max(240px, min(480px, 100%)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-3d { transition: none; }
+  .link-toggle svg { transition: none; }
+}
+</style>
+</head>
+
+<body>
+<div class="app">
+
+  <!-- ===================== CONTROL PANEL ===================== -->
+  <aside class="panel">
+    <header class="panel__header">
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <circle cx="24" cy="24" r="24" fill="#1db954"/>
+        <path d="M11 17.5c8-2.4 18-1.8 25.5 2.6" stroke="#000" stroke-width="3.6" stroke-linecap="round" fill="none"/>
+        <path d="M12.5 25c6.7-2 15-1.4 21 2.1" stroke="#000" stroke-width="3" stroke-linecap="round" fill="none"/>
+        <path d="M14 31.6c5.3-1.5 11.3-1 16 1.7" stroke="#000" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+      </svg>
+      <div>
+        <h1>Lyric Card Generator</h1>
+        <p>Design, preview and export in seconds</p>
+      </div>
+    </header>
+
+    <div class="panel__body">
+
+      <!-- Search & Auto-fill -->
+      <section class="section search-card" aria-labelledby="searchTitle">
+        <h2 class="section__title" id="searchTitle">Auto-fetch Cover &amp; Details</h2>
+        <p class="search-card__sub">Find a song to fill in the cover, title and artist for you.</p>
+
+        <form id="searchForm" novalidate>
+          <label class="sr-only" for="searchQuery">Search song or artist</label>
+          <div class="search-row">
+            <input type="text" id="searchQuery" placeholder="Search song or artist... e.g., Oasis Wonderwall" autocomplete="off" spellcheck="false" enterkeyhint="search">
+            <button type="submit" class="btn-sm" id="searchBtn">Search</button>
+          </div>
+          <p class="hint" id="searchHint" role="status" aria-live="polite"></p>
+        </form>
+
+        <button type="button" class="link-toggle" id="linkToggle" aria-expanded="false" aria-controls="linkBox">
+          <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2l4 4-4 4"/></svg>
+          Or paste a Spotify Track Link
+        </button>
+
+        <div class="link-box" id="linkBox" hidden>
+          <form id="linkForm" novalidate>
+            <label class="sr-only" for="spotifyUrl">Spotify track link</label>
+            <div class="search-row">
+              <input type="text" id="spotifyUrl" placeholder="https://open.spotify.com/track/..." autocomplete="off" spellcheck="false" inputmode="url">
+              <button type="submit" class="btn-sm" id="linkBtn">Fetch</button>
+            </div>
+            <p class="hint" id="linkHint" role="status" aria-live="polite"></p>
+          </form>
+        </div>
+      </section>
+
+      <!-- Song details -->
+      <section class="section">
+        <h2 class="section__title">Song details</h2>
+
+        <div class="field">
+          <label for="coverUrl">Cover URL</label>
+          <input type="text" id="coverUrl" placeholder="https://example.com/album-cover.jpg" autocomplete="off" spellcheck="false">
+          <p class="hint" id="coverHint">Paste a direct image link. The host must allow cross-origin access.</p>
+        </div>
+
+        <div class="field">
+          <label for="songTitle">Song title</label>
+          <input type="text" id="songTitle" placeholder="Enter the song title" autocomplete="off">
+        </div>
+
+        <div class="field">
+          <label for="artistName">Artist</label>
+          <input type="text" id="artistName" placeholder="Enter the artist name" autocomplete="off">
+        </div>
+
+        <div class="field">
+          <label for="lyrics">Lyrics</label>
+          <textarea id="lyrics" placeholder="Type or paste your favorite lyrics here. Line breaks are kept."></textarea>
+        </div>
+      </section>
+
+      <!-- Appearance -->
+      <section class="section">
+        <h2 class="section__title">Appearance</h2>
+
+        <div class="field">
+          <span class="label">Card background</span>
+          <div class="swatches" id="swatches">
+            <label class="custom-color" title="Pick a custom color">
+              <input type="color" id="bgColor" value="#A7429A" aria-label="Custom background color">
+            </label>
+            <span class="color-readout" id="colorReadout">#A7429A</span>
+          </div>
+        </div>
+
+        <label class="check">
+          <input type="checkbox" id="autoFit" checked>
+          <span class="check__box"><svg viewBox="0 0 12 12" fill="none" stroke="#000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.5l2.6 2.6L10 3.5"/></svg></span>
+          <span class="check__text">Auto-fit Text
+            <small>Shrinks the lyrics (64 px down to 24 px) until they fit above the logo.</small>
+          </span>
+        </label>
+
+        <div class="field">
+          <label for="lyricSize">Lyrics size</label>
+          <div class="range-row">
+            <button class="step" id="sizeDown" type="button" aria-label="Decrease lyrics size">−</button>
+            <input type="range" id="lyricSize" min="16" max="120" step="1" value="48">
+            <button class="step" id="sizeUp" type="button" aria-label="Increase lyrics size">+</button>
+            <output id="lyricSizeOut" for="lyricSize">48 px</output>
+          </div>
+          <p class="hint">Drag the slider or use − / + to set any size. This turns Auto-fit off.</p>
+          <p class="hint" id="fitHint" role="status"></p>
+        </div>
+
+        <label class="check">
+          <input type="checkbox" id="transparentBg">
+          <span class="check__box"><svg viewBox="0 0 12 12" fill="none" stroke="#000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.5l2.6 2.6L10 3.5"/></svg></span>
+          <span class="check__text">Transparent Background
+            <small>Flat download only. On: rounded corners stay transparent. Off: the whole canvas is filled with the card color. The 3D export always has transparent edges.</small>
+          </span>
+        </label>
+      </section>
+
+    </div>
+
+    <footer class="panel__footer">
+      <div class="seg" role="radiogroup" aria-label="Export size">
+        <button type="button" class="seg__btn" role="radio" aria-checked="false" data-scale="1">1024 × 1024</button>
+        <button type="button" class="seg__btn active" role="radio" aria-checked="true" data-scale="2">2048 × 2048</button>
+      </div>
+      <button class="btn btn--primary" id="downloadFlat" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-5-5m5 5l5-5M4 20h16"/></svg>
+        Download Flat (2D)
+      </button>
+      <button class="btn btn--ghost" id="download3d" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l9 5v10l-9 5-9-5V7l9-5z"/><path d="M12 12l9-5M12 12v10M12 12L3 7"/></svg>
+        Download 3D
+      </button>
+    </footer>
+  </aside>
+
+  <!-- ===================== PREVIEW ===================== -->
+  <main class="stage">
+    <span class="stage__badge">Live preview · 1024 × 1024 px</span>
+    <button type="button" class="btn-reset stage__reset" id="resetTilt">Reset tilt</button>
+
+    <div class="scene" id="scene">
+      <div class="card-3d">
+        <canvas id="cardCanvas" width="1024" height="1024" aria-label="Lyric card preview"></canvas>
+      </div>
+    </div>
+
+    <p class="stage__tip">Drag the card to tilt · Shift + drag to rotate · Scroll to change depth · Double-click to reset</p>
+  </main>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(() => {
+'use strict';
+
+/* =========================================================
+   1. CONFIGURATION
+   ========================================================= */
+
+/** Internal card resolution and layout metrics (all in canvas px). */
+const CARD      = 1024;   // canvas is always 1024 x 1024
+const RADIUS    = 48;     // card corner radius
+const PADDING   = 80;     // inner padding
+const COVER     = 120;    // cover thumbnail size
+const COVER_R   = 12;     // cover corner radius
+const HEAD_GAP  = 36;     // gap between cover and title/artist
+const LOGO      = 72;     // Spotify logo diameter
+const LYRIC_GAP = 64;     // gap between header and lyrics
+const LOGO_GAP  = 36;     // gap between lyrics and logo
+const LYRIC_MIN = 24;     // auto-fit lower bound
+const LYRIC_MAX = 64;     // auto-fit upper bound
+
+/**
+ * 3D tilt. KEEP IN SYNC with `.card-3d { transform }` in the CSS above.
+ * `perspective` is the CSS perspective in *screen* px; the export rescales it
+ * to the card's real on-screen width so the PNG matches the preview exactly.
+ */
+const TILT_DEFAULT = { rx: 12, ry: -15, rz: 2, perspective: 1200 };
+const TILT = { ...TILT_DEFAULT };
+let SS = 2;   // export scale: 1 = 1024x1024, 2 = 2048x2048 (set by the size picker)
+
+/**
+ * Glare gradient: single source of truth. It is written to the CSS variable
+ * --glare for the live preview AND replayed with createLinearGradient for the
+ * baked 3D export, so both look the same.
+ */
+const GLARE = {
+  angle: 115, // CSS gradient angle (degrees)
+  stops: [
+    [0.00, 'rgba(255,255,255,0)'],
+    [0.28, 'rgba(255,255,255,0)'],
+    [0.42, 'rgba(255,255,255,0.55)'],
+    [0.50, 'rgba(255,255,255,0.12)'],
+    [0.58, 'rgba(255,255,255,0.38)'],
+    [0.72, 'rgba(255,255,255,0)'],
+    [1.00, 'rgba(255,255,255,0)'],
+  ],
+};
+
+const PRESET_COLORS = [
+  '#A7429A', '#E8115B', '#F59B23', '#1DB954',
+  '#509BF5', '#7358FF', '#2D46B9', '#FF6437',
+  '#F5D547', '#E6E6FA', '#B3B3B3', '#181818',
+];
+
+const FONT = "'Poppins', 'Segoe UI', Arial, sans-serif";
+
+/** Search & auto-fill endpoints. */
+const ITUNES_URL      = 'https://itunes.apple.com/search';
+const SPOTIFY_OEMBED  = 'https://open.spotify.com/oembed';
+const REQUEST_TIMEOUT = 8000; // ms
+const SPOTIFY_TRACK_RE = /^https?:\/\/open\.spotify\.com\/(?:intl-[a-z-]+\/)?track\/([A-Za-z0-9]+)/i;
+
+/* =========================================================
+   2. DOM REFERENCES & STATE
+   ========================================================= */
+const $ = (id) => document.getElementById(id);
+
+const el = {
+  canvas:      $('cardCanvas'),
+  scene:       $('scene'),
+  coverUrl:    $('coverUrl'),
+  coverHint:   $('coverHint'),
+  title:       $('songTitle'),
+  artist:      $('artistName'),
+  lyrics:      $('lyrics'),
+  bgColor:     $('bgColor'),
+  colorOut:    $('colorReadout'),
+  swatches:    $('swatches'),
+  autoFit:     $('autoFit'),
+  lyricSize:   $('lyricSize'),
+  lyricSizeOut:$('lyricSizeOut'),
+  fitHint:     $('fitHint'),
+  transparent: $('transparentBg'),
+  btnFlat:     $('downloadFlat'),
+  btn3d:       $('download3d'),
+  toast:       $('toast'),
+
+
+  // Search & auto-fill
+  searchForm:  $('searchForm'),
+  searchQuery: $('searchQuery'),
+  searchBtn:   $('searchBtn'),
+  searchHint:  $('searchHint'),
+  linkToggle:  $('linkToggle'),
+  linkBox:     $('linkBox'),
+  linkForm:    $('linkForm'),
+  spotifyUrl:  $('spotifyUrl'),
+  linkBtn:     $('linkBtn'),
+  linkHint:    $('linkHint'),
+};
+
+const ctx = el.canvas.getContext('2d');
+
+const state = {
+  color: '#A7429A',
+  coverImg: null,     // HTMLImageElement once loaded
+  coverToken: 0,      // guards against out-of-order image loads
+};
+
+/* =========================================================
+   3. SMALL UTILITIES
+   ========================================================= */
+
+/** Perceived brightness (0-255) -> readable text color. */
+function contrastColor(hex) {
+  const { r, g, b } = hexToRgb(hex);
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+  return brightness > 150 ? '#000000' : '#FFFFFF';
+}
+
+function hexToRgb(hex) {
+  const h = hex.replace('#', '');
+  return {
+    r: parseInt(h.slice(0, 2), 16),
+    g: parseInt(h.slice(2, 4), 16),
+    b: parseInt(h.slice(4, 6), 16),
+  };
+}
+
+function rgba(hex, alpha) {
+  const { r, g, b } = hexToRgb(hex);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function slugify(text) {
+  return text.toString().toLowerCase().trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^\w-]+/g, '')
+    .replace(/--+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+let toastTimer;
+function toast(message) {
+  el.toast.textContent = message;
+  el.toast.classList.toggle('error', /fail|could not|couldn't|error/i.test(message));
+  el.toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.toast.classList.remove('show'), 2400);
+}
+
+/** Trigger a browser download for a data URL. */
+function saveDataUrl(dataUrl, filename) {
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+function fileBaseName(suffix) {
+  const parts = [slugify(el.title.value), slugify(el.artist.value)].filter(Boolean);
+  return (parts.length ? parts.join('_') : 'lyric-card') + suffix + '.png';
+}
+
+/* =========================================================
+   4. CANVAS DRAWING HELPERS
+   ========================================================= */
+
+/** Rounded-rect path (does not fill or stroke). */
+function roundedRect(g, x, y, w, h, r) {
+  g.beginPath();
+  g.moveTo(x + r, y);
+  g.arcTo(x + w, y,     x + w, y + h, r);
+  g.arcTo(x + w, y + h, x,     y + h, r);
+  g.arcTo(x,     y + h, x,     y,     r);
+  g.arcTo(x,     y,     x + w, y,     r);
+  g.closePath();
+}
+
+/** Letter spacing where supported (Chrome, Edge, Safari 17+, Firefox 115+). */
+function letterSpacing(g, px) {
+  if ('letterSpacing' in g) g.letterSpacing = px + 'px';
+}
+
+/** Word-wrap a single line of text to maxWidth using the current font. */
+function wrapLine(g, text, maxWidth) {
+  const words = text.split(/\s+/);
+  const lines = [];
+  let line = '';
+  for (const word of words) {
+    const test = line ? line + ' ' + word : word;
+    if (g.measureText(test).width > maxWidth && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = test;
+    }
+  }
+  lines.push(line);
+  return lines;
+}
+
+/** Shorten text with an ellipsis until it fits maxWidth. */
+function ellipsize(g, text, maxWidth) {
+  if (g.measureText(text).width <= maxWidth) return text;
+  while (text.length > 1 && g.measureText(text + '…').width > maxWidth) {
+    text = text.slice(0, -1);
+  }
+  return text.trimEnd() + '…';
+}
+
+/* =========================================================
+   5. CARD SECTIONS
+   ========================================================= */
+
+/** Cover image, center-cropped to a square with rounded corners. */
+function drawCover(g, textColor) {
+  const x = PADDING, y = PADDING;
+
+  g.save();
+  roundedRect(g, x, y, COVER, COVER, COVER_R);
+  g.clip();
+
+  const img = state.coverImg;
+  if (img) {
+    // "object-fit: cover" equivalent
+    const side = Math.min(img.naturalWidth, img.naturalHeight);
+    const sx = (img.naturalWidth - side) / 2;
+    const sy = (img.naturalHeight - side) / 2;
+    g.drawImage(img, sx, sy, side, side, x, y, COVER, COVER);
+  } else {
+    drawCoverPlaceholder(g, x, y, COVER, textColor);
+  }
+  g.restore();
+}
+
+/** Placeholder: soft tinted square with a music note. */
+function drawCoverPlaceholder(g, x, y, size, textColor) {
+  g.fillStyle = rgba(textColor === '#000000' ? '#000000' : '#FFFFFF', 0.16);
+  g.fillRect(x, y, size, size);
+
+  g.fillStyle = rgba(textColor === '#000000' ? '#000000' : '#FFFFFF', 0.55);
+  const cx = x + size / 2, cy = y + size / 2, u = size / 100;
+
+  // note head
+  g.beginPath();
+  g.ellipse(cx - 9 * u, cy + 16 * u, 11 * u, 8.5 * u, -0.35, 0, Math.PI * 2);
+  g.fill();
+  // stem
+  g.fillRect(cx + 0.5 * u, cy - 26 * u, 5 * u, 42 * u);
+  // flag
+  g.beginPath();
+  g.moveTo(cx + 5.5 * u, cy - 26 * u);
+  g.quadraticCurveTo(cx + 24 * u, cy - 20 * u, cx + 20 * u, cy - 2 * u);
+  g.quadraticCurveTo(cx + 18 * u, cy - 14 * u, cx + 5.5 * u, cy - 14 * u);
+  g.closePath();
+  g.fill();
+}
+
+/** Song title (bold) and artist (regular), vertically centered next to the cover. */
+function drawHeader(g, textColor) {
+  const x = PADDING + COVER + HEAD_GAP;
+  const maxWidth = CARD - PADDING - x;
+
+  const titleSize = 38, titleLine = 46;
+  const artistSize = 30, artistLine = 40;
+
+  g.textBaseline = 'top';
+  g.fillStyle = textColor;
+
+  // Title: up to 2 lines
+  g.font = `700 ${titleSize}px ${FONT}`;
+  letterSpacing(g, -0.5);
+  let titleLines = wrapLine(g, (el.title.value.trim() || 'Song title'), maxWidth);
+  if (titleLines.length > 2) {
+    titleLines = titleLines.slice(0, 2);
+    titleLines[1] = ellipsize(g, titleLines[1] + ' …', maxWidth);
+  }
+  titleLines = titleLines.map((l) => ellipsize(g, l, maxWidth));
+
+  const total = titleLines.length * titleLine + artistLine;
+  let y = PADDING + COVER / 2 - total / 2;
+
+  for (const line of titleLines) {
+    g.fillText(line, x, y);
+    y += titleLine;
+  }
+
+  // Artist
+  g.font = `400 ${artistSize}px ${FONT}`;
+  letterSpacing(g, 0);
+  g.globalAlpha = 0.85;
+  g.fillText(ellipsize(g, el.artist.value.trim() || 'Artist', maxWidth), x, y);
+  g.globalAlpha = 1;
+}
+
+/**
+ * Lay out lyrics at a given font size.
+ * Keeps the user's line breaks (blank lines become half-height gaps) and
+ * word-wraps long lines. Returns total height and the widest rendered line.
+ */
+function layoutLyrics(g, text, size, maxWidth) {
+  const lineHeight = Math.round(size * 1.2);
+  g.font = `700 ${size}px ${FONT}`;
+  letterSpacing(g, -size * 0.02);
+
+  const rows = [];
+  let widest = 0;
+
+  for (const raw of text.split('\n')) {
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      rows.push({ text: '', h: Math.round(lineHeight * 0.5) });
+      continue;
+    }
+    for (const line of wrapLine(g, trimmed, maxWidth)) {
+      rows.push({ text: line, h: lineHeight });
+      widest = Math.max(widest, g.measureText(line).width);
+    }
+  }
+
+  // Drop leading / trailing blank gaps
+  while (rows.length && rows[0].text === '') rows.shift();
+  while (rows.length && rows[rows.length - 1].text === '') rows.pop();
+
+  const height = rows.reduce((sum, r) => sum + r.h, 0);
+  letterSpacing(g, 0);
+  return { rows, height, widest };
+}
+
+/**
+ * Auto-fit: find the largest size in [LYRIC_MIN, LYRIC_MAX] whose layout fits
+ * both the available height (above the logo) and the available width.
+ * Binary search keeps it fast enough to run on every keystroke.
+ */
+function fitLyricSize(g, text, maxWidth, availHeight) {
+  let lo = LYRIC_MIN, hi = LYRIC_MAX, best = LYRIC_MIN;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const m = layoutLyrics(g, text, mid, maxWidth);
+    if (m.height <= availHeight && m.widest <= maxWidth) {
+      best = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  return best;
+}
+
+/** Draw the lyrics block. Returns the size used and whether it overflows. */
+function drawLyrics(g, textColor) {
+  const maxWidth = CARD - PADDING * 2;
+  const top = PADDING + COVER + LYRIC_GAP;
+  const bottom = CARD - PADDING - LOGO - LOGO_GAP;
+  const avail = bottom - top;
+
+  const hasText = el.lyrics.value.trim().length > 0;
+  const text = hasText ? el.lyrics.value : 'Your lyrics\nwill appear here';
+
+  const size = el.autoFit.checked
+    ? fitLyricSize(g, text, maxWidth, avail)
+    : parseInt(el.lyricSize.value, 10);
+
+  const layout = layoutLyrics(g, text, size, maxWidth);
+
+  g.fillStyle = textColor;
+  g.globalAlpha = hasText ? 1 : 0.45;
+  g.font = `700 ${size}px ${FONT}`;
+  g.textBaseline = 'top';
+  letterSpacing(g, -size * 0.02);
+
+  let y = top;
+  for (const row of layout.rows) {
+    if (row.text) g.fillText(row.text, PADDING, y);
+    y += row.h;
+  }
+
+  letterSpacing(g, 0);
+  g.globalAlpha = 1;
+
+  return {
+    size,
+    overflow: layout.height > avail || layout.widest > maxWidth,
+  };
+}
+
+/** Simplified Spotify logo (disc with 3 curved lines) + "Spotify" wordmark. */
+function drawFooter(g, textColor, bgColor) {
+  const x = PADDING;
+  const y = CARD - PADDING - LOGO;
+  const r = LOGO / 2;
+  const cx = x + r, cy = y + r;
+
+  // Disc
+  g.fillStyle = textColor;
+  g.beginPath();
+  g.arc(cx, cy, r, 0, Math.PI * 2);
+  g.fill();
+
+  // Three curved lines, cut out in the card color
+  g.strokeStyle = bgColor;
+  g.lineCap = 'round';
+  const arcs = [
+    { x1: -0.56, y1: -0.22, qx:  0.04, qy: -0.46, x2: 0.60, y2: -0.12, w: 0.16 },
+    { x1: -0.47, y1:  0.04, qx:  0.02, qy: -0.14, x2: 0.50, y2:  0.14, w: 0.13 },
+    { x1: -0.38, y1:  0.27, qx:  0.01, qy:  0.13, x2: 0.40, y2:  0.35, w: 0.10 },
+  ];
+  for (const a of arcs) {
+    g.lineWidth = a.w * r;
+    g.beginPath();
+    g.moveTo(cx + a.x1 * r, cy + a.y1 * r);
+    g.quadraticCurveTo(cx + a.qx * r, cy + a.qy * r, cx + a.x2 * r, cy + a.y2 * r);
+    g.stroke();
+  }
+  g.lineCap = 'butt';
+
+  // Wordmark
+  g.fillStyle = textColor;
+  g.font = `700 52px ${FONT}`;
+  g.textBaseline = 'middle';
+  letterSpacing(g, -2);
+  g.fillText('Spotify', x + LOGO + 16, cy + 2);
+  letterSpacing(g, 0);
+  g.textBaseline = 'alphabetic';
+}
+
+/* =========================================================
+   6. CARD RENDERER
+   ========================================================= */
+
+/**
+ * Draw the whole card onto any 1024x1024 2D context.
+ * @param {CanvasRenderingContext2D} g
+ * @param {{fullBleed?: boolean}} opts
+ *   fullBleed = true  -> fill the entire canvas with the card color (no rounded corners)
+ *   fullBleed = false -> rounded card, corners stay transparent
+ */
+function renderCard(g, { fullBleed = false } = {}) {
+  const bg = state.color;
+  const textColor = contrastColor(bg);
+
+  g.clearRect(0, 0, CARD, CARD);
+
+  // Background
+  g.fillStyle = bg;
+  if (fullBleed) {
+    g.fillRect(0, 0, CARD, CARD);
+  } else {
+    roundedRect(g, 0, 0, CARD, CARD, RADIUS);
+    g.fill();
+  }
+
+  drawCover(g, textColor);
+  drawHeader(g, textColor);
+  const info = drawLyrics(g, textColor);
+  drawFooter(g, textColor, bg);
+  return info;
+}
+
+/** Re-render the live preview and sync auto-fit UI. */
+function renderPreview() {
+  const info = renderCard(ctx, { fullBleed: false });
+
+  if (el.autoFit.checked) el.lyricSize.value = info.size;
+  el.lyricSizeOut.textContent = info.size + ' px';
+
+  if (info.overflow) {
+    el.fitHint.textContent = el.autoFit.checked
+      ? 'These lyrics are too long, even at the minimum size. Try shortening them.'
+      : 'Text overflows the card. Lower the size or enable Auto-fit.';
+    el.fitHint.className = 'hint error';
+  } else {
+    el.fitHint.textContent = '';
+    el.fitHint.className = 'hint';
+  }
+}
+
+/** Coalesce rapid input events into one draw per frame. */
+let rafId = 0;
+function scheduleRender() {
+  cancelAnimationFrame(rafId);
+  rafId = requestAnimationFrame(renderPreview);
+}
+
+/* =========================================================
+   7. COVER IMAGE LOADING
+   ========================================================= */
+
+function setCoverHint(message, kind = '') {
+  el.coverHint.textContent = message;
+  el.coverHint.className = 'hint' + (kind ? ' ' + kind : '');
+}
+
+/**
+ * Load the cover with crossOrigin = "Anonymous". If the server does not send
+ * CORS headers the browser refuses to load the image at all, so the canvas can
+ * never become tainted and exporting keeps working (we show the placeholder).
+ */
+function loadCover(url) {
+  const token = ++state.coverToken;
+  state.coverImg = null;
+
+  if (!url) {
+    setCoverHint('Paste a direct image link. The host must allow cross-origin access.');
+    scheduleRender();
+    return;
+  }
+
+  setCoverHint('Loading cover…');
+
+  const img = new Image();
+  img.crossOrigin = 'Anonymous';      // must be set BEFORE src
+  img.referrerPolicy = 'no-referrer';
+  img.onload = () => {
+    if (token !== state.coverToken) return;   // stale request
+    state.coverImg = img;
+    setCoverHint('Cover loaded.', 'ok');
+    scheduleRender();
+  };
+  img.onerror = () => {
+    if (token !== state.coverToken) return;
+    state.coverImg = null;
+    setCoverHint('Could not load this image. Check the link, or the host may block cross-origin use.', 'error');
+    scheduleRender();
+  };
+  img.src = url;
+
+  scheduleRender();
+}
+
+let coverTimer;
+function onCoverInput() {
+  clearTimeout(coverTimer);
+  coverTimer = setTimeout(() => loadCover(el.coverUrl.value.trim()), 350);
+}
+
+/* =========================================================
+   7B. SEARCH & AUTO-FILL (iTunes keyword search + Spotify oEmbed)
+   ========================================================= */
+
+/** An error whose message is safe and clear enough to show to the user. */
+class SearchError extends Error {}
+
+/** Show a status line under a search input. kind: '' | 'error' | 'ok'. */
+const statusTimers = new WeakMap();
+function setStatus(node, message, kind = '', autoClearMs = 0) {
+  clearTimeout(statusTimers.get(node));
+  node.textContent = message;
+  node.className = 'hint' + (kind ? ' ' + kind : '');
+  if (autoClearMs) {
+    statusTimers.set(node, setTimeout(() => {
+      node.textContent = '';
+      node.className = 'hint';
+    }, autoClearMs));
+  }
+}
+
+function setBusy(btn, busy, busyLabel, idleLabel) {
+  btn.disabled = busy;
+  btn.innerHTML = busy ? '<span class="spin"></span>' + busyLabel : idleLabel;
+}
+
+/**
+ * fetch() + JSON with a timeout.
+ * Network failures, CORS blocks and timeouts reject with a TypeError / AbortError.
+ * HTTP errors reject with a SearchError flagged `http = true`.
+ */
+async function fetchJson(url) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT);
+  try {
+    const res = await fetch(url, { signal: ctrl.signal, referrerPolicy: 'no-referrer' });
+    if (!res.ok) {
+      const err = new SearchError('HTTP ' + res.status);
+      err.http = true;
+      err.status = res.status;
+      throw err;
+    }
+    return await res.json();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** JSONP fallback (the iTunes API supports it), used if fetch() is blocked. */
+let jsonpCounter = 0;
+function jsonp(url) {
+  return new Promise((resolve, reject) => {
+    const cb = '__itunesCb' + (++jsonpCounter);
+    const script = document.createElement('script');
+    let timer;
+
+    const cleanup = () => {
+      clearTimeout(timer);
+      delete window[cb];
+      script.remove();
+    };
+
+    window[cb] = (data) => { cleanup(); resolve(data); };
+    script.onerror = () => { cleanup(); reject(new Error('jsonp network error')); };
+    timer = setTimeout(() => { cleanup(); reject(new Error('jsonp timeout')); }, REQUEST_TIMEOUT);
+
+    script.src = url + '&callback=' + cb;
+    document.head.appendChild(script);
+  });
+}
+
+/**
+ * iTunes keyword search -> { cover, title, artist }.
+ * Throws SearchError with a user-friendly message on any failure.
+ */
+async function searchItunes(query) {
+  const url = `${ITUNES_URL}?term=${encodeURIComponent(query)}&entity=song&limit=1`;
+
+  let data;
+  try {
+    data = await fetchJson(url);
+  } catch (err) {
+    if (err instanceof SearchError && err.http) {
+      throw new SearchError(`iTunes returned an error (${err.status}). Please try again in a moment.`);
+    }
+    // Network error, CORS block or timeout: try the JSONP route once.
+    try {
+      data = await jsonp(url);
+    } catch (_) {
+      throw new SearchError("Couldn't reach iTunes. Check your internet connection and try again.");
+    }
+  }
+
+  const hit = data && Array.isArray(data.results) ? data.results[0] : null;
+  if (!hit) {
+    throw new SearchError(`No results found for "${query}". Try different keywords.`);
+  }
+  if (!hit.artworkUrl100) {
+    throw new SearchError('Found a match, but it has no cover art. Try another search.');
+  }
+
+  return {
+    cover:  hit.artworkUrl100.replace('100x100', '600x600'),
+    title:  hit.trackName  || '',
+    artist: hit.artistName || '',
+  };
+}
+
+/**
+ * Spotify oEmbed -> thumbnail URL (cover only; oEmbed has no clean title/artist).
+ * Throws SearchError with a user-friendly message on any failure.
+ */
+async function fetchSpotifyCover(rawUrl) {
+  const match = rawUrl.match(SPOTIFY_TRACK_RE);
+  if (!match) {
+    throw new SearchError('That does not look like a Spotify track link. It should start with https://open.spotify.com/track/');
+  }
+
+  // Drop tracking params and the optional /intl-xx/ segment
+  const canonical = `https://open.spotify.com/track/${match[1]}`;
+
+  let data;
+  try {
+    data = await fetchJson(`${SPOTIFY_OEMBED}?url=${encodeURIComponent(canonical)}`);
+  } catch (err) {
+    if (err instanceof SearchError && err.http) {
+      throw new SearchError(
+        err.status === 404
+          ? 'Spotify could not find that track. Check the link and try again.'
+          : `Spotify returned an error (${err.status}). Please try again in a moment.`
+      );
+    }
+    throw new SearchError("Couldn't reach Spotify (network issue or blocked by CORS). Try the keyword search instead.");
+  }
+
+  if (!data || !data.thumbnail_url) {
+    throw new SearchError('Spotify did not return a cover image for this track.');
+  }
+  return data.thumbnail_url;
+}
+
+/** Put a cover URL into the field and run the normal loading pipeline. */
+function applyCover(url) {
+  el.coverUrl.value = url;
+  clearTimeout(coverTimer);     // cancel any pending debounced load from typing
+  loadCover(url);               // sets the cover hint and calls scheduleRender()
+}
+
+async function onSearchSubmit(e) {
+  e.preventDefault();                       // never reload the page
+  if (el.searchBtn.disabled) return;
+
+  const query = el.searchQuery.value.trim();
+  if (!query) {
+    setStatus(el.searchHint, 'Type a song or artist to search for.', 'error');
+    el.searchQuery.focus();
+    return;
+  }
+
+  setBusy(el.searchBtn, true, 'Searching…', 'Search');
+  setStatus(el.searchHint, 'Searching…');
+
+  try {
+    const result = await searchItunes(query);
+
+    el.title.value  = result.title;
+    el.artist.value = result.artist;
+    applyCover(result.cover);
+    scheduleRender();
+
+    const label = [result.title, result.artist].filter(Boolean).join(' — ');
+    setStatus(el.searchHint, 'Cover found!' + (label ? ' ' + label : ''), 'ok', 5000);
+    toast('Cover found!');
+  } catch (err) {
+    console.error(err);
+    setStatus(
+      el.searchHint,
+      err instanceof SearchError ? err.message : 'Something went wrong. Please try again.',
+      'error'
+    );
+  } finally {
+    setBusy(el.searchBtn, false, 'Searching…', 'Search');
+  }
+}
+
+async function onLinkSubmit(e) {
+  e.preventDefault();                       // never reload the page
+  if (el.linkBtn.disabled) return;
+
+  const link = el.spotifyUrl.value.trim();
+  if (!link) {
+    setStatus(el.linkHint, 'Paste a Spotify track link first.', 'error');
+    el.spotifyUrl.focus();
+    return;
+  }
+
+  setBusy(el.linkBtn, true, 'Fetching…', 'Fetch');
+  setStatus(el.linkHint, 'Fetching cover…');
+
+  try {
+    const cover = await fetchSpotifyCover(link);
+    applyCover(cover);
+    setStatus(el.linkHint, 'Cover found!', 'ok', 5000);
+    toast('Cover found!');
+  } catch (err) {
+    console.error(err);
+    setStatus(
+      el.linkHint,
+      err instanceof SearchError ? err.message : 'Something went wrong. Please try again.',
+      'error'
+    );
+  } finally {
+    setBusy(el.linkBtn, false, 'Fetching…', 'Fetch');
+  }
+}
+
+function onLinkToggle() {
+  const open = el.linkToggle.getAttribute('aria-expanded') === 'true';
+  el.linkToggle.setAttribute('aria-expanded', String(!open));
+  el.linkBox.hidden = open;
+  if (!open) el.spotifyUrl.focus();
+}
+
+/* =========================================================
+   8. GLARE (shared by CSS preview and PNG export)
+   ========================================================= */
+
+/** CSS string for the preview's ::after background. */
+function glareCss() {
+  const stops = GLARE.stops.map(([p, c]) => `${c} ${(p * 100).toFixed(1)}%`).join(', ');
+  return `linear-gradient(${GLARE.angle}deg, ${stops})`;
+}
+
+/**
+ * Paint the glare onto a canvas with createLinearGradient, reproducing the
+ * geometry of a CSS linear-gradient(angle) on a square box, using the
+ * "overlay" blend mode, clipped to the rounded card so corners stay clean.
+ */
+function paintGlare(g) {
+  const a = (GLARE.angle * Math.PI) / 180;
+  const dx = Math.sin(a), dy = -Math.cos(a);
+  const half = (Math.abs(CARD * Math.sin(a)) + Math.abs(CARD * Math.cos(a))) / 2;
+  const c = CARD / 2;
+
+  const grad = g.createLinearGradient(c - dx * half, c - dy * half, c + dx * half, c + dy * half);
+  for (const [p, color] of GLARE.stops) grad.addColorStop(p, color);
+
+  g.save();
+  roundedRect(g, 0, 0, CARD, CARD, RADIUS);
+  g.clip();
+  g.globalCompositeOperation = 'overlay';
+  g.fillStyle = grad;
+  g.fillRect(0, 0, CARD, CARD);
+  g.restore();
+}
+
+/* =========================================================
+   9. 3D EXPORT (baked perspective)
+   ========================================================= */
+
+/*
+  Canvas 2D transforms are affine only (translate / scale / skew / rotate), so
+  they cannot create real perspective foreshortening on their own. To make the
+  PNG match the CSS preview exactly, we compute the same CSS transform
+  (rotateX · rotateY · rotateZ + perspective) as a 3x3 homography and resample
+  the card through it natively with ImageData. No libraries involved.
+*/
+
+const rad = (deg) => (deg * Math.PI) / 180;
+
+/** 3x3 row-major matrix multiply. */
+function mul3(a, b) {
+  const o = new Array(9).fill(0);
+  for (let r = 0; r < 3; r++)
+    for (let c = 0; c < 3; c++)
+      for (let k = 0; k < 3; k++) o[r * 3 + c] += a[r * 3 + k] * b[k * 3 + c];
+  return o;
+}
+
+/** 3x3 inverse via adjugate. */
+function invert3(m) {
+  const [a, b, c, d, e, f, g, h, i] = m;
+  const A =  e * i - f * h, B = -(d * i - f * g), C =  d * h - e * g;
+  const det = a * A + b * B + c * C;
+  const k = 1 / det;
+  return [
+    A * k, -(b * i - c * h) * k,  (b * f - c * e) * k,
+    B * k,  (a * i - c * g) * k, -(a * f - c * d) * k,
+    C * k, -(a * h - b * g) * k,  (a * e - b * d) * k,
+  ];
+}
+
+/**
+ * Homography H mapping card-plane points (x, y, 1), centered on the card, to
+ * screen points (X*w, Y*w, w), replicating CSS:
+ *   perspective(d) rotateX(rx) rotateY(ry) rotateZ(rz)
+ * with transform-origin and perspective-origin at the card center.
+ */
+function buildHomography(d) {
+  const [cx, sx] = [Math.cos(rad(TILT.rx)), Math.sin(rad(TILT.rx))];
+  const [cy, sy] = [Math.cos(rad(TILT.ry)), Math.sin(rad(TILT.ry))];
+  const [cz, sz] = [Math.cos(rad(TILT.rz)), Math.sin(rad(TILT.rz))];
+
+  // CSS rotation matrices (y axis points down)
+  const Rx = [1, 0, 0,   0, cx, -sx,   0, sx, cx];
+  const Ry = [cy, 0, sy,   0, 1, 0,   -sy, 0, cy];
+  const Rz = [cz, -sz, 0,   sz, cz, 0,   0, 0, 1];
+  const M = mul3(Rx, mul3(Ry, Rz));
+
+  // Plane z = 0, so only the first two columns of M matter.
+  // w = 1 - z/d  ->  third row is (-m20/d, -m21/d, 1)
+  return [
+    M[0], M[1], 0,
+    M[3], M[4], 0,
+    -M[6] / d, -M[7] / d, 1,
+  ];
+}
+
+/** Project a card-plane point to screen space using H. */
+function project(H, x, y) {
+  const w = H[6] * x + H[7] * y + H[8];
+  return { x: (H[0] * x + H[1] * y + H[2]) / w, y: (H[3] * x + H[4] * y + H[5]) / w };
+}
+
+/**
+ * Warp a 1024x1024 source canvas through the 3D homography.
+ * Uses inverse mapping with bilinear, alpha-premultiplied sampling so the
+ * silhouette edge is anti-aliased against full transparency.
+ */
+function warpCard(source, H, k = 1) {
+  const half = CARD / 2;
+  const S = CARD * k;               // source canvas size in px
+
+  // Bounding box of the projected card
+  const corners = [[-half, -half], [half, -half], [half, half], [-half, half]]
+    .map(([x, y]) => project(H, x, y));
+  const minX = Math.floor(k * Math.min(...corners.map((p) => p.x)));
+  const minY = Math.floor(k * Math.min(...corners.map((p) => p.y)));
+  const maxX = Math.ceil(k * Math.max(...corners.map((p) => p.x)));
+  const maxY = Math.ceil(k * Math.max(...corners.map((p) => p.y)));
+  const outW = maxX - minX, outH = maxY - minY;
+
+  const src = source.getContext('2d').getImageData(0, 0, S, S).data;
+  const dstImage = new ImageData(outW, outH);
+  const dst = dstImage.data;
+  const inv = invert3(H);
+
+  for (let py = 0; py < outH; py++) {
+    const Y = (minY + py + 0.5) / k;
+    for (let px = 0; px < outW; px++) {
+      const X = (minX + px + 0.5) / k;
+
+      // Screen -> card plane
+      const w = inv[6] * X + inv[7] * Y + inv[8];
+      const u = ((inv[0] * X + inv[1] * Y + inv[2]) / w + half) * k - 0.5;
+      const v = ((inv[3] * X + inv[4] * Y + inv[5]) / w + half) * k - 0.5;
+
+      if (u < -1 || v < -1 || u > S || v > S) continue;
+
+      const x0 = Math.floor(u), y0 = Math.floor(v);
+      const fx = u - x0, fy = v - y0;
+
+      let r = 0, g = 0, b = 0, a = 0;
+      for (let j = 0; j < 2; j++) {
+        const yy = y0 + j;
+        if (yy < 0 || yy >= S) continue;      // outside = transparent
+        const wy = j ? fy : 1 - fy;
+        for (let i = 0; i < 2; i++) {
+          const xx = x0 + i;
+          if (xx < 0 || xx >= S) continue;
+          const wgt = (i ? fx : 1 - fx) * wy;
+          const idx = (yy * S + xx) * 4;
+          const al = (src[idx + 3] / 255) * wgt;
+          r += src[idx] * al;
+          g += src[idx + 1] * al;
+          b += src[idx + 2] * al;
+          a += al;
+        }
+      }
+
+      if (a > 0) {
+        const o = (py * outW + px) * 4;
+        dst[o]     = r / a;
+        dst[o + 1] = g / a;
+        dst[o + 2] = b / a;
+        dst[o + 3] = a * 255;
+      }
+    }
+  }
+
+  const out = document.createElement('canvas');
+  out.width = outW;
+  out.height = outH;
+  out.getContext('2d').putImageData(dstImage, 0, 0);
+  return out;
+}
+
+/** Build the final 3D PNG canvas: tilted card + glare + soft drop shadow. */
+function renderCard3D() {
+  // 1. Flat card (rounded, transparent corners) + glare baked in
+  const flat = document.createElement('canvas');
+  flat.width = flat.height = CARD * SS;
+  const fg = flat.getContext('2d');
+  fg.scale(SS, SS);                       // draw in 1024 units, rasterize at 2x
+  renderCard(fg, { fullBleed: false });
+  paintGlare(fg);
+
+  // 2. Perspective distance. CSS perspective is in screen px, so scale it by
+  //    (canvas px / on-screen px) to match the preview's strength exactly.
+  const displayed = el.canvas.offsetWidth || 560;
+  const d = TILT.perspective * (CARD / displayed);
+
+  // 3. Warp through the homography
+  const H = buildHomography(d);
+  const warped = warpCard(flat, H, SS);
+
+  // 4. Compose on a padded transparent canvas with a drop shadow
+  const pad = 150 * SS;
+  const out = document.createElement('canvas');
+  out.width = warped.width + pad * 2;
+  out.height = warped.height + pad * 2;
+  const og = out.getContext('2d');
+
+  og.save();
+  og.shadowColor = 'rgba(0, 0, 0, 0.55)';
+  og.shadowBlur = 60 * SS;
+  og.shadowOffsetY = 60 * SS;
+  og.drawImage(warped, pad, pad);
+  og.restore();
+
+  // Second, tighter contact shadow
+  og.save();
+  og.shadowColor = 'rgba(0, 0, 0, 0.35)';
+  og.shadowBlur = 18 * SS;
+  og.shadowOffsetY = 16 * SS;
+  og.drawImage(warped, pad, pad);
+  og.restore();
+
+  return out;
+}
+
+/* =========================================================
+   10. DOWNLOADS
+   ========================================================= */
+
+/** Flat 2D: re-draw offscreen, honoring the Transparent Background checkbox. */
+function downloadFlat() {
+  try {
+    const out = document.createElement('canvas');
+    out.width = out.height = CARD * SS;   // 2048 x 2048 retina export
+    const g = out.getContext('2d');
+    g.scale(SS, SS);
+
+    // Checked  -> rounded card only, corners transparent
+    // Unchecked -> whole canvas filled with the background color
+    renderCard(g, { fullBleed: !el.transparent.checked });
+
+    saveDataUrl(out.toDataURL('image/png'), fileBaseName(''));
+    toast('Flat card downloaded');
+  } catch (err) {
+    console.error(err);
+    toast('Export failed. The cover image may block cross-origin use.');
+  }
+}
+
+/** 3D: bake tilt + glare + shadow into a transparent PNG. */
+function download3D() {
+  el.btn3d.disabled = true;
+  toast('Rendering 3D card…');
+
+  // Yield a frame so the toast paints before the heavy pixel work
+  setTimeout(() => {
+    try {
+      const out = renderCard3D();
+      saveDataUrl(out.toDataURL('image/png'), fileBaseName('_3d'));
+      toast('3D card downloaded');
+    } catch (err) {
+      console.error(err);
+      toast('Export failed. The cover image may block cross-origin use.');
+    } finally {
+      el.btn3d.disabled = false;
+    }
+  }, 40);
+}
+
+/* =========================================================
+   10B. TILT CONTROLS (live preview + export share TILT)
+   ========================================================= */
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
+/** Push TILT into the CSS preview (the export reads TILT directly). */
+function applyTilt() {
+  el.scene.style.perspective = TILT.perspective + 'px';
+  el.scene.style.setProperty('--rx', TILT.rx + 'deg');
+  el.scene.style.setProperty('--ry', TILT.ry + 'deg');
+  el.scene.style.setProperty('--rz', TILT.rz + 'deg');
+}
+
+/** Mouse / touch control: drag = X/Y tilt, Shift+drag = Z, wheel = depth. */
+function bindTilt() {
+  let drag = null;
+  const sc = el.scene;
+
+  sc.addEventListener('pointerdown', (e) => {
+    drag = { x: e.clientX, y: e.clientY, rx: TILT.rx, ry: TILT.ry, rz: TILT.rz };
+    sc.setPointerCapture(e.pointerId);
+    sc.classList.add('dragging');
+  });
+  sc.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (e.shiftKey) {
+      TILT.rz = clamp(Math.round(drag.rz + dx * 0.3), -180, 180);
+    } else {
+      TILT.ry = clamp(Math.round(drag.ry + dx * 0.3), -75, 75);
+      TILT.rx = clamp(Math.round(drag.rx - dy * 0.3), -75, 75);
+    }
+    applyTilt();
+  });
+  const end = () => { drag = null; sc.classList.remove('dragging'); };
+  sc.addEventListener('pointerup', end);
+  sc.addEventListener('pointercancel', end);
+
+  sc.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    TILT.perspective = clamp(Math.round(TILT.perspective + e.deltaY * 2), 400, 3000);
+    applyTilt();
+  }, { passive: false });
+
+  const reset = () => { Object.assign(TILT, TILT_DEFAULT); applyTilt(); toast('Tilt reset'); };
+  $('resetTilt').addEventListener('click', reset);
+  sc.addEventListener('dblclick', reset);
+  applyTilt();
+}
+
+/* =========================================================
+   11. COLOR PICKER UI
+   ========================================================= */
+
+function setColor(hex) {
+  state.color = hex.toUpperCase();
+  el.bgColor.value = state.color.toLowerCase();
+  el.colorOut.textContent = state.color;
+
+  el.swatches.querySelectorAll('.swatch').forEach((s) => {
+    s.classList.toggle('active', s.dataset.color.toUpperCase() === state.color);
+  });
+  scheduleRender();
+}
+
+function buildSwatches() {
+  const frag = document.createDocumentFragment();
+  for (const hex of PRESET_COLORS) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'swatch';
+    b.style.background = hex;
+    b.dataset.color = hex;
+    b.title = hex;
+    b.setAttribute('aria-label', 'Use color ' + hex);
+    b.addEventListener('click', () => setColor(hex));
+    frag.appendChild(b);
+  }
+  // Presets go before the custom picker + readout
+  el.swatches.insertBefore(frag, el.swatches.firstChild);
+}
+
+/* =========================================================
+   12. INIT
+   ========================================================= */
+
+function init() {
+  // Glare for the live CSS preview comes from the same data as the export
+  el.scene.style.setProperty('--glare', glareCss());
+
+  buildSwatches();
+  setColor(state.color);
+  bindTilt();
+
+  // Export size picker (1024 or 2048)
+  document.querySelectorAll('.seg__btn').forEach((b) => b.addEventListener('click', () => {
+    SS = +b.dataset.scale;
+    document.querySelectorAll('.seg__btn').forEach((o) => {
+      const on = o === b;
+      o.classList.toggle('active', on);
+      o.setAttribute('aria-checked', String(on));
+    });
+    toast(`Export size: ${CARD * SS} × ${CARD * SS}`);
+  }));
+
+  // Text inputs
+  [el.title, el.artist, el.lyrics].forEach((i) => i.addEventListener('input', scheduleRender));
+  el.coverUrl.addEventListener('input', onCoverInput);
+  el.coverUrl.addEventListener('change', () => loadCover(el.coverUrl.value.trim()));
+
+  // Search & auto-fill (forms: Enter key works, preventDefault stops page reloads)
+  el.searchForm.addEventListener('submit', onSearchSubmit);
+  el.linkForm.addEventListener('submit', onLinkSubmit);
+  el.linkToggle.addEventListener('click', onLinkToggle);
+  el.searchQuery.addEventListener('input', () => setStatus(el.searchHint, ''));
+  el.spotifyUrl.addEventListener('input', () => setStatus(el.linkHint, ''));
+
+  // Color
+  el.bgColor.addEventListener('input', (e) => setColor(e.target.value));
+
+  // Auto-fit / manual size
+  el.autoFit.addEventListener('change', scheduleRender);
+
+  // Manual size: any change switches Auto-fit off so the size stays where you put it
+  const setManualSize = (value) => {
+    const min = +el.lyricSize.min, max = +el.lyricSize.max;
+    el.lyricSize.value = Math.min(max, Math.max(min, value));
+    el.autoFit.checked = false;
+    scheduleRender();
+  };
+  el.lyricSize.addEventListener('input', () => setManualSize(+el.lyricSize.value));
+  $('sizeDown').addEventListener('click', () => setManualSize(+el.lyricSize.value - 1));
+  $('sizeUp').addEventListener('click', () => setManualSize(+el.lyricSize.value + 1));
+
+  // Buttons
+  el.btnFlat.addEventListener('click', downloadFlat);
+  el.btn3d.addEventListener('click', download3D);
+
+  // First paint, then repaint once Poppins is ready so metrics are correct
+  renderPreview();
+  const fontLoads = [400, 500, 600, 700].map((w) => document.fonts.load(`${w} 32px Poppins`));
+  Promise.all(fontLoads).catch(() => {}).then(() => document.fonts.ready).then(scheduleRender);
+}
+
+init();
+})();
+</script>
+</body>
+</html>
