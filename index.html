@@ -55,6 +55,7 @@ body {
   display: grid;
   grid-template-columns: 400px 1fr;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;                 /* blocks focus-induced page scrolling */
 }
 
@@ -101,6 +102,35 @@ body {
 .seg__btn:active { transform:scale(.97); }
 .seg__btn.active { background:var(--green); color:#000; font-weight:600; }
 .seg__btn:focus-visible { outline:3px solid rgba(29,185,84,.5); outline-offset:2px; }
+.results { list-style:none; margin-top:10px; display:grid; gap:4px; max-height:340px; overflow-y:auto; scrollbar-width:thin; scrollbar-color:#444 transparent; }
+.results:empty { display:none; }
+.result { display:flex; align-items:center; gap:12px; width:100%; padding:8px; border:1px solid transparent; border-radius:10px; background:transparent; color:var(--text); text-align:left; font-family:inherit; cursor:pointer; transition:background .15s,border-color .15s,transform .12s; animation: pop .25s ease both; }
+.result:hover { background:rgba(255,255,255,.07); }
+.result:active { transform:scale(.99); }
+.result:focus-visible { outline:3px solid rgba(29,185,84,.5); outline-offset:1px; }
+.result.selected { border-color:var(--green); background:rgba(29,185,84,.1); }
+.result img, .result .ph { flex:none; width:48px; height:48px; border-radius:6px; object-fit:cover; background:#333; }
+.result__meta { min-width:0; flex:1; }
+.result__title { font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.result__sub { font-size:11.5px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.result__tick { flex:none; width:18px; height:18px; border-radius:50%; background:var(--green); color:#000; display:none; place-items:center; font-size:11px; font-weight:700; }
+.result.selected .result__tick { display:grid; }
+.skel { height:64px; border-radius:10px; background:linear-gradient(90deg,#2a2a2a 25%,#343434 50%,#2a2a2a 75%); background-size:200% 100%; animation: shimmer 1.2s linear infinite; }
+@keyframes shimmer { to { background-position:-200% 0; } }
+@keyframes pop { from { opacity:0; transform:translateY(6px); } }
+@media (max-width:1100px) { .app { grid-template-columns: 340px 1fr; } }
+@media (max-width:600px) {
+  .panel__header { padding:16px; }
+  .panel__body { padding:16px 16px 4px; }
+  .panel__footer { padding:12px 16px 18px; }
+  .stage { padding:64px 16px 40px; min-height:auto; }
+  .stage__badge { top:12px; left:12px; font-size:11px; }
+  .stage__reset { top:12px; right:12px; }
+  .stage__tip { padding:0 16px; bottom:10px; font-size:11px; }
+  .scene { width: min(100%, 420px); }
+  .toast { width:max-content; max-width:calc(100vw - 32px); bottom:16px; }
+  .swatch, .custom-color { width:32px; height:32px; }
+}
 .tilt-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
 .tilt-head .section__title { margin:0; }
 .btn-reset { appearance:none; background:transparent; color:var(--muted); border:1px solid #444; border-radius:500px; padding:4px 12px; font:500 12px 'Poppins',sans-serif; cursor:pointer; transition:color .15s,border-color .15s,transform .12s; }
@@ -417,6 +447,7 @@ input[type="range"]:disabled { opacity: .4; cursor: not-allowed; }
 @media (max-width: 900px) {
   body { overflow: auto; }
   .app { grid-template-columns: 1fr; height: auto; overflow: visible; }
+  .panel__footer { position: sticky; bottom: 0; z-index: 5; box-shadow: 0 -8px 24px rgba(0,0,0,.4); }
   .panel { border-right: 0; border-bottom: 1px solid var(--border); order: 2; }
   .panel__body { overflow: visible; }
   .stage { order: 1; padding: 70px 24px 60px; min-height: 70vh; }
@@ -453,16 +484,17 @@ input[type="range"]:disabled { opacity: .4; cursor: not-allowed; }
       <!-- Search & Auto-fill -->
       <section class="section search-card" aria-labelledby="searchTitle">
         <h2 class="section__title" id="searchTitle">Auto-fetch Cover &amp; Details</h2>
-        <p class="search-card__sub">Find a song to fill in the cover, title and artist for you.</p>
+        <p class="search-card__sub">Search a song or artist, then pick a result to fill in the cover, title and artist.</p>
 
         <form id="searchForm" novalidate>
           <label class="sr-only" for="searchQuery">Search song or artist</label>
           <div class="search-row">
-            <input type="text" id="searchQuery" placeholder="Search song or artist... e.g., Oasis Wonderwall" autocomplete="off" spellcheck="false" enterkeyhint="search">
+            <input type="text" id="searchQuery" placeholder="Search song or artist..." autocomplete="off" spellcheck="false" enterkeyhint="search">
             <button type="submit" class="btn-sm" id="searchBtn">Search</button>
           </div>
           <p class="hint" id="searchHint" role="status" aria-live="polite"></p>
         </form>
+        <ul class="results" id="results" aria-label="Search results"></ul>
 
         <button type="button" class="link-toggle" id="linkToggle" aria-expanded="false" aria-controls="linkBox">
           <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2l4 4-4 4"/></svg>
@@ -678,6 +710,7 @@ const el = {
   searchQuery: $('searchQuery'),
   searchBtn:   $('searchBtn'),
   searchHint:  $('searchHint'),
+  results:     $('results'),
   linkToggle:  $('linkToggle'),
   linkBox:     $('linkBox'),
   linkForm:    $('linkForm'),
@@ -1200,7 +1233,7 @@ function jsonp(url) {
  * Throws SearchError with a user-friendly message on any failure.
  */
 async function searchItunes(query) {
-  const url = `${ITUNES_URL}?term=${encodeURIComponent(query)}&entity=song&limit=1`;
+  const url = `${ITUNES_URL}?term=${encodeURIComponent(query)}&entity=song&limit=8`;
 
   let data;
   try {
@@ -1217,19 +1250,16 @@ async function searchItunes(query) {
     }
   }
 
-  const hit = data && Array.isArray(data.results) ? data.results[0] : null;
-  if (!hit) {
-    throw new SearchError(`No results found for "${query}". Try different keywords.`);
-  }
-  if (!hit.artworkUrl100) {
-    throw new SearchError('Found a match, but it has no cover art. Try another search.');
-  }
+  const hits = (data && Array.isArray(data.results) ? data.results : []).filter((h) => h.artworkUrl100);
+  if (!hits.length) throw new SearchError(`No results found for "${query}". Try different keywords.`);
 
-  return {
-    cover:  hit.artworkUrl100.replace('100x100', '600x600'),
-    title:  hit.trackName  || '',
-    artist: hit.artistName || '',
-  };
+  return hits.map((h) => ({
+    thumb:  h.artworkUrl100,
+    cover:  h.artworkUrl100.replace('100x100', '600x600'),
+    title:  h.trackName  || '',
+    artist: h.artistName || '',
+    album:  h.collectionName || '',
+  }));
 }
 
 /**
@@ -1272,41 +1302,92 @@ function applyCover(url) {
   loadCover(url);               // sets the cover hint and calls scheduleRender()
 }
 
-async function onSearchSubmit(e) {
-  e.preventDefault();                       // never reload the page
-  if (el.searchBtn.disabled) return;
+let searchToken = 0;
 
+/** Show shimmering placeholders while a search is running. */
+function showSkeletons() {
+  el.results.innerHTML = '<li class="skel"></li>'.repeat(3);
+}
+
+/** Draw the result list: cover, song, artist (+ album). Click one to auto-fill. */
+function renderResults(list) {
+  el.results.innerHTML = '';
+  list.forEach((r, i) => {
+    const li = document.createElement('li');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'result';
+    btn.style.animationDelay = (i * 30) + 'ms';
+
+    const img = document.createElement('img');
+    img.src = r.thumb; img.alt = ''; img.loading = 'lazy'; img.referrerPolicy = 'no-referrer';
+
+    const meta = document.createElement('span');
+    meta.className = 'result__meta';
+    const t = document.createElement('div'); t.className = 'result__title'; t.textContent = r.title;
+    const sub = document.createElement('div'); sub.className = 'result__sub';
+    sub.textContent = [r.artist, r.album].filter(Boolean).join(' · ');
+    meta.append(t, sub);
+
+    const tick = document.createElement('span');
+    tick.className = 'result__tick'; tick.textContent = '✓';
+
+    btn.append(img, meta, tick);
+    btn.addEventListener('click', () => {
+      el.results.querySelectorAll('.result').forEach((x) => x.classList.remove('selected'));
+      btn.classList.add('selected');
+      el.title.value = r.title;
+      el.artist.value = r.artist;
+      applyCover(r.cover);               // cover pipeline uses crossOrigin = "Anonymous"
+      scheduleRender();
+      toast(`Loaded "${r.title}"`);
+    });
+    li.appendChild(btn);
+    el.results.appendChild(li);
+  });
+}
+
+/** Run a search and show every match so the user can choose. */
+async function runSearch(query) {
+  const token = ++searchToken;
+  setBusy(el.searchBtn, true, 'Searching…', 'Search');
+  setStatus(el.searchHint, 'Searching…');
+  showSkeletons();
+  try {
+    const list = await searchItunes(query);
+    if (token !== searchToken) return;          // a newer search replaced this one
+    renderResults(list);
+    setStatus(el.searchHint, `${list.length} songs found. Pick one to fill in the card.`, 'ok');
+  } catch (err) {
+    if (token !== searchToken) return;
+    console.error(err);
+    el.results.innerHTML = '';
+    setStatus(el.searchHint, err instanceof SearchError ? err.message : 'Something went wrong. Please try again.', 'error');
+  } finally {
+    if (token === searchToken) setBusy(el.searchBtn, false, 'Searching…', 'Search');
+  }
+}
+
+function onSearchSubmit(e) {
+  e.preventDefault();                       // never reload the page
+  clearTimeout(liveTimer);
   const query = el.searchQuery.value.trim();
   if (!query) {
     setStatus(el.searchHint, 'Type a song or artist to search for.', 'error');
     el.searchQuery.focus();
     return;
   }
+  runSearch(query);
+}
 
-  setBusy(el.searchBtn, true, 'Searching…', 'Search');
-  setStatus(el.searchHint, 'Searching…');
-
-  try {
-    const result = await searchItunes(query);
-
-    el.title.value  = result.title;
-    el.artist.value = result.artist;
-    applyCover(result.cover);
-    scheduleRender();
-
-    const label = [result.title, result.artist].filter(Boolean).join(' — ');
-    setStatus(el.searchHint, 'Cover found!' + (label ? ' ' + label : ''), 'ok', 5000);
-    toast('Cover found!');
-  } catch (err) {
-    console.error(err);
-    setStatus(
-      el.searchHint,
-      err instanceof SearchError ? err.message : 'Something went wrong. Please try again.',
-      'error'
-    );
-  } finally {
-    setBusy(el.searchBtn, false, 'Searching…', 'Search');
-  }
+/** Search-as-you-type (debounced) so results appear while typing. */
+let liveTimer;
+function onSearchTyping() {
+  setStatus(el.searchHint, '');
+  clearTimeout(liveTimer);
+  const q = el.searchQuery.value.trim();
+  if (q.length < 2) { searchToken++; el.results.innerHTML = ''; setBusy(el.searchBtn, false, '', 'Search'); return; }
+  liveTimer = setTimeout(() => runSearch(q), 500);
 }
 
 async function onLinkSubmit(e) {
@@ -1723,7 +1804,7 @@ function init() {
   el.searchForm.addEventListener('submit', onSearchSubmit);
   el.linkForm.addEventListener('submit', onLinkSubmit);
   el.linkToggle.addEventListener('click', onLinkToggle);
-  el.searchQuery.addEventListener('input', () => setStatus(el.searchHint, ''));
+  el.searchQuery.addEventListener('input', onSearchTyping);
   el.spotifyUrl.addEventListener('input', () => setStatus(el.linkHint, ''));
 
   // Color
