@@ -102,8 +102,10 @@ body {
 .seg__btn:active { transform:scale(.97); }
 .seg__btn.active { background:var(--green); color:#000; font-weight:600; }
 .seg__btn:focus-visible { outline:3px solid rgba(29,185,84,.5); outline-offset:2px; }
-.results { list-style:none; margin-top:10px; display:grid; gap:4px; max-height:340px; overflow-y:auto; scrollbar-width:thin; scrollbar-color:#444 transparent; }
-.results:empty { display:none; }
+#searchForm .search-row { position:relative; }
+.results { position:absolute; top:calc(100% + 6px); left:0; right:0; z-index:30; list-style:none; padding:6px; background:var(--panel); border:1px solid #3a3a3a; border-radius:12px; box-shadow:0 16px 40px rgba(0,0,0,.6); display:grid; gap:2px; max-height:min(320px, 50vh); overflow-y:auto; transform-origin:top; animation:drop .16s ease-out; scrollbar-width:thin; scrollbar-color:#444 transparent; }
+.results:empty, .results.closed { display:none; }
+@keyframes drop { from { opacity:0; transform:translateY(-6px) scale(.98); } }
 .result { display:flex; align-items:center; gap:12px; width:100%; padding:8px; border:1px solid transparent; border-radius:10px; background:transparent; color:var(--text); text-align:left; font-family:inherit; cursor:pointer; transition:background .15s,border-color .15s,transform .12s; animation: pop .25s ease both; }
 .result:hover { background:rgba(255,255,255,.07); }
 .result:active { transform:scale(.99); }
@@ -115,7 +117,7 @@ body {
 .result__sub { font-size:11.5px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .result__tick { flex:none; width:18px; height:18px; border-radius:50%; background:var(--green); color:#000; display:none; place-items:center; font-size:11px; font-weight:700; }
 .result.selected .result__tick { display:grid; }
-.skel { height:64px; border-radius:10px; background:linear-gradient(90deg,#2a2a2a 25%,#343434 50%,#2a2a2a 75%); background-size:200% 100%; animation: shimmer 1.2s linear infinite; }
+.skel { height:60px; border-radius:10px; background:linear-gradient(90deg,#2a2a2a 25%,#343434 50%,#2a2a2a 75%); background-size:200% 100%; animation: shimmer 1.2s linear infinite; }
 @keyframes shimmer { to { background-position:-200% 0; } }
 @keyframes pop { from { opacity:0; transform:translateY(6px); } }
 @media (max-width:1100px) { .app { grid-template-columns: 340px 1fr; } }
@@ -489,12 +491,12 @@ input[type="range"]:disabled { opacity: .4; cursor: not-allowed; }
         <form id="searchForm" novalidate>
           <label class="sr-only" for="searchQuery">Search song or artist</label>
           <div class="search-row">
-            <input type="text" id="searchQuery" placeholder="Search song or artist..." autocomplete="off" spellcheck="false" enterkeyhint="search">
+            <input type="text" id="searchQuery" role="combobox" aria-expanded="false" aria-controls="results" placeholder="Search song or artist..." autocomplete="off" spellcheck="false" enterkeyhint="search">
             <button type="submit" class="btn-sm" id="searchBtn">Search</button>
+            <ul class="results" id="results" role="listbox" aria-label="Search results"></ul>
           </div>
           <p class="hint" id="searchHint" role="status" aria-live="polite"></p>
         </form>
-        <ul class="results" id="results" aria-label="Search results"></ul>
 
         <button type="button" class="link-toggle" id="linkToggle" aria-expanded="false" aria-controls="linkBox">
           <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2l4 4-4 4"/></svg>
@@ -1307,7 +1309,12 @@ let searchToken = 0;
 /** Show shimmering placeholders while a search is running. */
 function showSkeletons() {
   el.results.innerHTML = '<li class="skel"></li>'.repeat(3);
+  openResults();
 }
+
+/** Dropdown open / close (also keeps aria-expanded in sync). */
+function openResults()  { el.results.classList.remove('closed'); el.searchQuery.setAttribute('aria-expanded', 'true'); }
+function closeResults() { el.results.classList.add('closed');    el.searchQuery.setAttribute('aria-expanded', 'false'); }
 
 /** Draw the result list: cover, song, artist (+ album). Click one to auto-fill. */
 function renderResults(list) {
@@ -1341,10 +1348,13 @@ function renderResults(list) {
       applyCover(r.cover);               // cover pipeline uses crossOrigin = "Anonymous"
       scheduleRender();
       toast(`Loaded "${r.title}"`);
+      closeResults();                    // collapse the dropdown after choosing
     });
+    btn.setAttribute('role', 'option');
     li.appendChild(btn);
     el.results.appendChild(li);
   });
+  openResults();
 }
 
 /** Run a search and show every match so the user can choose. */
@@ -1357,7 +1367,7 @@ async function runSearch(query) {
     const list = await searchItunes(query);
     if (token !== searchToken) return;          // a newer search replaced this one
     renderResults(list);
-    setStatus(el.searchHint, `${list.length} songs found. Pick one to fill in the card.`, 'ok');
+    setStatus(el.searchHint, `${list.length} songs found. Pick one from the list.`, 'ok');
   } catch (err) {
     if (token !== searchToken) return;
     console.error(err);
@@ -1386,7 +1396,7 @@ function onSearchTyping() {
   setStatus(el.searchHint, '');
   clearTimeout(liveTimer);
   const q = el.searchQuery.value.trim();
-  if (q.length < 2) { searchToken++; el.results.innerHTML = ''; setBusy(el.searchBtn, false, '', 'Search'); return; }
+  if (q.length < 2) { searchToken++; el.results.innerHTML = ''; closeResults(); setBusy(el.searchBtn, false, '', 'Search'); return; }
   liveTimer = setTimeout(() => runSearch(q), 500);
 }
 
@@ -1805,6 +1815,20 @@ function init() {
   el.linkForm.addEventListener('submit', onLinkSubmit);
   el.linkToggle.addEventListener('click', onLinkToggle);
   el.searchQuery.addEventListener('input', onSearchTyping);
+
+  // Dropdown behaviour: reopen on focus, close on outside click / Escape, arrow-key navigation
+  el.searchQuery.addEventListener('focus', () => { if (el.results.children.length) openResults(); });
+  document.addEventListener('pointerdown', (e) => { if (!el.results.parentNode.contains(e.target)) closeResults(); });
+  el.searchForm.addEventListener('keydown', (e) => {
+    const items = [...el.results.querySelectorAll('.result')];
+    if (e.key === 'Escape') { closeResults(); el.searchQuery.focus(); return; }
+    if (!items.length || (e.key !== 'ArrowDown' && e.key !== 'ArrowUp')) return;
+    e.preventDefault();
+    openResults();
+    const i = items.indexOf(document.activeElement);
+    const next = e.key === 'ArrowDown' ? i + 1 : i - 1;
+    if (next < 0) el.searchQuery.focus(); else items[Math.min(next, items.length - 1)].focus();
+  });
   el.spotifyUrl.addEventListener('input', () => setStatus(el.linkHint, ''));
 
   // Color
