@@ -1773,7 +1773,7 @@ function drawLyrics(g, P) {
   const text = hasText ? el.lyrics.value : 'Your lyrics\nwill appear here';
   const paras = parseLyrics(text);
 
-  let size, overflow;
+  let size, overflow = false;
   if (el.autoFit.checked) {
     ({ size, overflow } = fitCached(g, paras, text, maxWidth, avail));
   } else {
@@ -1781,7 +1781,6 @@ function drawLyrics(g, P) {
   }
 
   const layout = layoutLyrics(g, paras, size, maxWidth, true);
-  if (!el.autoFit.checked) overflow = layout.height > avail || layout.tooWide;
 
   g.globalAlpha = hasText ? 1 : 0.45;
   g.font = `700 ${size}px ${FONT}`;
@@ -1790,10 +1789,9 @@ function drawLyrics(g, P) {
   const ax = state.align === 'center' ? CANVAS_W / 2 : state.align === 'right' ? CANVAS_W - PADDING : PADDING;
   g.textAlign = state.align;
 
-  // Wide card: centre the block vertically in the space under the header. Square: hug the header.
-  const y0 = top + (LYRIC_MIDDLE ? Math.max(0, (avail - layout.height) / 2) : 0);
+  // Force the text to start exactly at the top margin, ignoring the vertical centering!
+  const y0 = top;
 
-  // Extruded backs of every row along the tilt vector (deepest first), then the glowing front face
   const lay = getLayers(Math.round(state.cardDepth * CHILD_DEPTH_RATIO), P, 20);
   if (lay) {
     for (const o of lay) {
@@ -1805,6 +1803,7 @@ function drawLyrics(g, P) {
       }
     }
   }
+  
   if (P.glow) setShadow(g, P.glow, 15);
   for (const p of P.passes) {
     g.fillStyle = p.color;
@@ -1819,7 +1818,7 @@ function drawLyrics(g, P) {
   g.textAlign = 'left';
   letterSpacing(g, 0);
   g.globalAlpha = 1;
-  return { size, overflow };
+  return { size, overflow: el.autoFit.checked ? overflow : false };
 }
 
 /* ---------- Logo (cached offscreen sprite) ---------- */
@@ -2157,14 +2156,21 @@ function updateFitHint(overflow) {
 
 /** Re-render the live preview and sync auto-fit UI. */
 function renderPreview() {
-  state.needsRender = false;                          // clean BEFORE painting: a change that lands mid-render re-flags itself
+  state.needsRender = false;
   const info = renderCard(ctx, { fullBleed: false });
 
   const label = info.size + ' px';
   if (el.lyricSizeOut.textContent !== label) el.lyricSizeOut.textContent = label;
+  
   if (el.autoFit.checked && info.size !== lastSize) {
     tweenSlider(info.size);
     if (lastSize !== null) pulseSize();
+  } else if (!el.autoFit.checked) {
+    cancelAnimationFrame(sliderTween);
+    if (+el.lyricSize.value !== info.size) {
+      el.lyricSize.value = info.size;
+      paintRange();
+    }
   }
   lastSize = info.size;
 
@@ -3247,8 +3253,11 @@ function initControls() {
   document.querySelectorAll('#sizeSeg .seg__btn').forEach((o) => {
     const on = +o.dataset.scale === SS; o.classList.toggle('active', on); o.setAttribute('aria-checked', String(on));
   });
-  el.autoFit.addEventListener('change', queueSave);
-  paintRange();
+  el.autoFit.addEventListener('change', () => {
+    if (!el.autoFit.checked) cancelAnimationFrame(sliderTween);
+    queueSave();
+    scheduleRender();
+  });
 }
 
 /* =========================================================
