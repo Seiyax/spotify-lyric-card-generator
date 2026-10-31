@@ -102,6 +102,15 @@ body {
 .seg__btn:active { transform:scale(.97); }
 .seg__btn.active { background:var(--green); color:#000; font-weight:600; }
 .seg__btn:focus-visible { outline:3px solid rgba(29,185,84,.5); outline-offset:2px; }
+.seg__btn svg { width:16px; height:16px; flex:none; }
+.seg__btn small { font-size:11px; font-weight:500; opacity:.65; }
+
+/* Card-style selector: a sliding green thumb sits under the two buttons */
+.seg--thumb { position:relative; }
+.seg--thumb::before { content:''; position:absolute; top:4px; bottom:4px; left:4px; width:calc(50% - 6px); border-radius:500px; background:var(--green); box-shadow:0 4px 14px rgba(29,185,84,.35); transition:transform .4s cubic-bezier(.2,.8,.2,1); pointer-events:none; }
+.seg--thumb[data-active="1"]::before { transform:translateX(calc(100% + 4px)); }
+.seg--thumb .seg__btn { position:relative; z-index:1; display:inline-flex; align-items:center; justify-content:center; gap:8px; }
+.seg--thumb .seg__btn.active { background:transparent; }
 #searchForm .search-row { position:relative; }
 .results { position:absolute; top:calc(100% + 6px); left:0; right:0; z-index:30; list-style:none; padding:6px; background:var(--panel); border:1px solid #3a3a3a; border-radius:12px; box-shadow:0 16px 40px rgba(0,0,0,.6); display:grid; gap:2px; max-height:min(320px, 50vh); overflow-y:auto; transform-origin:top; animation:drop .16s ease-out; scrollbar-width:thin; scrollbar-color:#444 transparent; }
 .results:empty, .results.closed { display:none; }
@@ -129,7 +138,7 @@ body {
   .stage__badge { top:12px; left:12px; font-size:11px; }
   .stage__reset { top:12px; right:12px; }
   .stage__tip { padding:0 16px; bottom:10px; font-size:11px; }
-  .scene { width: min(100%, 420px); }
+  .scene { width: min(100%, var(--max-w-xs, 420px)); }
   .toast { width:max-content; max-width:calc(100vw - 32px); bottom:16px; }
   .swatch, .custom-color { width:32px; height:32px; }
 }
@@ -441,8 +450,11 @@ input[type="range"]:disabled { opacity: .4; cursor: not-allowed; }
 */
 .scene {
   position: relative;
-  width: max(240px, min(560px, 100%, calc(100vh - 160px)));
-  aspect-ratio: 1 / 1;
+  /* --ar / --max-w* are set from JS per card template; width + aspect-ratio animate on switch */
+  --ar: 1;
+  width: max(240px, min(var(--max-w, 560px), 100%, calc((100vh - 160px) * var(--ar))));
+  aspect-ratio: var(--ar);
+  transition: width .6s cubic-bezier(.2, .8, .2, 1), aspect-ratio .6s cubic-bezier(.2, .8, .2, 1);
   perspective: 1200px;
   filter:
     drop-shadow(0 45px 40px rgba(0, 0, 0, .55))
@@ -463,19 +475,25 @@ input[type="range"]:disabled { opacity: .4; cursor: not-allowed; }
   display: block;
   width: 100%;
   height: 100%;
+  transition: opacity .22s ease, transform .3s cubic-bezier(.2, .8, .2, 1);
 }
+/* Template switch: the card dips, JS swaps the canvas, the card settles back in */
+.scene.switching .card-3d canvas { opacity: 0; transform: scale(.965); }
+.scene.switching .card-3d::after { opacity: 0; }
 
 /*
   Glass glare. <canvas> is a replaced element and cannot host ::after, so the
-  pseudo-element sits on the wrapper right above it. The radius is 48/1024 = 4.6875%
-  so the shine is clipped to the card's rounded corners.
+  pseudo-element sits on the wrapper right above it. --rr is set from JS as an
+  elliptical percent pair (RADIUS / W  /  RADIUS / H) so the corners stay perfectly
+  circular on both the 1:1 and the 16:9 card.
   --glare is generated from the same data the 3D export uses (see JS: GLARE).
 */
 .card-3d::after {
   content: '';
   position: absolute;
   inset: 0;
-  border-radius: 4.6875%;
+  border-radius: var(--rr, 4.6875%);
+  transition: opacity .2s ease, border-radius .6s cubic-bezier(.2, .8, .2, 1);
   background: var(--glare, linear-gradient(115deg, transparent 30%, rgba(255,255,255,.5) 45%, transparent 70%));
   mix-blend-mode: overlay;
   pointer-events: none;
@@ -504,12 +522,13 @@ input[type="range"]:disabled { opacity: .4; cursor: not-allowed; }
   .panel { border-right: 0; border-bottom: 1px solid var(--border); order: 2; }
   .panel__body { overflow: visible; }
   .stage { order: 1; padding: 70px 24px 60px; min-height: 70vh; }
-  .scene { width: max(240px, min(480px, 100%)); }
+  .scene { width: max(240px, min(var(--max-w-sm, 480px), 100%)); }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .card-3d { transition: none; }
   .link-toggle svg { transition: none; }
+  .scene, .card-3d canvas, .card-3d::after, .seg--thumb::before { transition: none; }
 }
 </style>
 </head>
@@ -600,6 +619,19 @@ input[type="range"]:disabled { opacity: .4; cursor: not-allowed; }
         <h2 class="section__title">Appearance</h2>
 
         <div class="field">
+          <span class="label" id="styleLabel">Card style</span>
+          <div class="seg seg--thumb" id="styleSeg" role="radiogroup" aria-labelledby="styleLabel" data-active="0">
+            <button type="button" class="seg__btn active" role="radio" aria-checked="true" data-template="square">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="11" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>Square <small>1:1</small>
+            </button>
+            <button type="button" class="seg__btn" role="radio" aria-checked="false" tabindex="-1" data-template="wide">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="3.8" width="14" height="8.4" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>Wide <small>16:9</small>
+            </button>
+          </div>
+          <p class="hint" id="styleHint"></p>
+        </div>
+
+        <div class="field">
           <span class="label">Card background</span>
           <div class="swatches" id="swatches">
             <label class="custom-color" title="Pick a custom color">
@@ -613,7 +645,7 @@ input[type="range"]:disabled { opacity: .4; cursor: not-allowed; }
           <input type="checkbox" id="autoFit" checked>
           <span class="check__box"><svg viewBox="0 0 12 12" fill="none" stroke="#000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.5l2.6 2.6L10 3.5"/></svg></span>
           <span class="check__text">Auto-fit Text
-            <small>Shrinks the lyrics (64 px down to 24 px) until they fit above the logo.</small>
+            <small id="fitRange">Shrinks the lyrics (64 px down to 24 px) until they fit above the logo.</small>
           </span>
         </label>
 
@@ -641,7 +673,7 @@ input[type="range"]:disabled { opacity: .4; cursor: not-allowed; }
     </div>
 
     <footer class="panel__footer">
-      <div class="seg" role="radiogroup" aria-label="Export size">
+      <div class="seg" id="sizeSeg" role="radiogroup" aria-label="Export size">
         <button type="button" class="seg__btn" role="radio" aria-checked="false" data-scale="1">1024 × 1024</button>
         <button type="button" class="seg__btn active" role="radio" aria-checked="true" data-scale="2">2048 × 2048</button>
       </div>
@@ -658,7 +690,7 @@ input[type="range"]:disabled { opacity: .4; cursor: not-allowed; }
 
   <!-- ===================== PREVIEW ===================== -->
   <main class="stage">
-    <span class="stage__badge">Live preview · 1024 × 1024 px</span>
+    <span class="stage__badge" id="stageBadge">Live preview · 1024 × 1024 px</span>
     <button type="button" class="btn-reset stage__reset" id="resetTilt">Reset tilt</button>
 
     <div class="scene" id="scene">
@@ -702,18 +734,49 @@ input[type="range"]:disabled { opacity: .4; cursor: not-allowed; }
    1. CONFIGURATION
    ========================================================= */
 
-/** Internal card resolution and layout metrics (all in canvas px). */
-const CARD      = 1024;   // canvas is always 1024 x 1024
-const RADIUS    = 48;     // card corner radius
-const PADDING   = 80;     // inner padding
-const COVER     = 120;    // cover thumbnail size
-const COVER_R   = 12;     // cover corner radius
-const HEAD_GAP  = 36;     // gap between cover and title/artist
-const LOGO      = 72;     // Spotify logo diameter
-const LYRIC_GAP = 64;     // gap between header and lyrics
-const LOGO_GAP  = 36;     // gap between lyrics and logo
-const LYRIC_MIN = 24;     // auto-fit lower bound
-const LYRIC_MAX = 64;     // auto-fit upper bound
+/**
+ * Card templates. Every layout metric lives here (all in canvas px), so adding
+ * a third template is just one more entry. `applyLayout()` copies the active
+ * entry into the live variables below; all drawing + 3D math reads those.
+ */
+const LAYOUTS = {
+  square: {
+    label: 'Classic Square · 1:1',
+    w: 1024, h: 1024, radius: 48, pad: 80,
+    cover: 120, coverR: 12, headGap: 36,
+    logo: 72, wordmark: 52, logoGap: 36, lyricGap: 64,
+    lyricMin: 24, lyricMax: 64, lyricMiddle: false,   // lyrics hug the header
+    titleSize: 38, titleLine: 46, artistSize: 30, artistLine: 40,
+    preview: [560, 480, 420],                          // max preview width: desktop / tablet / phone
+  },
+  wide: {
+    label: 'Cinematic Wide · 16:9',
+    w: 1280, h: 720, radius: 40, pad: 64,
+    cover: 160, coverR: 12, headGap: 32,
+    logo: 52, wordmark: 38, logoGap: 24, lyricGap: 36,
+    lyricMin: 20, lyricMax: 60, lyricMiddle: true,     // lyrics centred in the space under the header
+    titleSize: 44, titleLine: 52, artistSize: 30, artistLine: 40,
+    preview: [880, 720, 560],
+  },
+};
+
+// Live layout (assigned by applyLayout). CANVAS_W / CANVAS_H replace the old CARD constant.
+let LAYOUT_KEY = 'square', LAYOUT;
+let CANVAS_W, CANVAS_H, RADIUS, PADDING, COVER, COVER_R, HEAD_GAP, LOGO, WORDMARK, LOGO_GAP, LYRIC_GAP;
+let LYRIC_MIN, LYRIC_MAX, LYRIC_MIDDLE, TITLE_SIZE, TITLE_LINE, ARTIST_SIZE, ARTIST_LINE;
+
+function applyLayout(key) {
+  LAYOUT_KEY = key;
+  LAYOUT = LAYOUTS[key];
+  ({
+    w: CANVAS_W, h: CANVAS_H, radius: RADIUS, pad: PADDING,
+    cover: COVER, coverR: COVER_R, headGap: HEAD_GAP,
+    logo: LOGO, wordmark: WORDMARK, logoGap: LOGO_GAP, lyricGap: LYRIC_GAP,
+    lyricMin: LYRIC_MIN, lyricMax: LYRIC_MAX, lyricMiddle: LYRIC_MIDDLE,
+    titleSize: TITLE_SIZE, titleLine: TITLE_LINE, artistSize: ARTIST_SIZE, artistLine: ARTIST_LINE,
+  } = LAYOUT);
+}
+applyLayout('square');
 
 /**
  * 3D tilt. KEEP IN SYNC with `.card-3d { transform }` in the CSS above.
@@ -722,7 +785,7 @@ const LYRIC_MAX = 64;     // auto-fit upper bound
  */
 const TILT_DEFAULT = { rx: 12, ry: -15, rz: 2, perspective: 1200 };
 const TILT = { ...TILT_DEFAULT };
-let SS = 2;   // export scale: 1 = 1024x1024, 2 = 2048x2048 (set by the size picker)
+let SS = 2;   // export scale: 1x or 2x of CANVAS_W x CANVAS_H (set by the size picker)
 
 /**
  * Glare gradient: single source of truth. It is written to the CSS variable
@@ -780,6 +843,10 @@ const el = {
   btnFlat:     $('downloadFlat'),
   btn3d:       $('download3d'),
   toast:       $('toast'),
+  stageBadge:  $('stageBadge'),
+  styleSeg:    $('styleSeg'),
+  styleHint:   $('styleHint'),
+  fitRange:    $('fitRange'),
 
 
   // Search & auto-fill
@@ -864,6 +931,76 @@ function fileBaseName(suffix) {
 /* =========================================================
    4. CANVAS DRAWING HELPERS
    ========================================================= */
+
+/** Blend two #RRGGBB colours (t = 0 -> a, t = 1 -> b). */
+function mixHex(a, b, t) {
+  const A = hexToRgb(a), B = hexToRgb(b);
+  const f = (x, y) => Math.min(255, Math.max(0, Math.round(x + (y - x) * t)));
+  return '#' + [f(A.r, B.r), f(A.g, B.g), f(A.b, B.b)].map((v) => v.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Wide-card background: the chosen colour pulled toward silver at the top-left,
+ * a bright sheen band mid-card, then falling into a deeper tone. Stored as data
+ * so the logo cut-out can sample the exact colour underneath it.
+ */
+function metalGradient(bg) {
+  const silver = '#D3D6DC';
+  return {
+    x0: 0, y0: 0, x1: CANVAS_W, y1: CANVAS_H,
+    stops: [
+      [0.00, mixHex(bg, silver, 0.40)],
+      [0.30, mixHex(bg, silver, 0.10)],
+      [0.52, mixHex(bg, '#FFFFFF', 0.16)],   // sheen
+      [0.76, mixHex(bg, '#000000', 0.10)],
+      [1.00, mixHex(bg, '#000000', 0.24)],
+    ],
+  };
+}
+
+/** Colour of the metal gradient at a canvas point (matches the canvas gradient's linear RGB blend). */
+function metalColorAt(m, x, y) {
+  const dx = m.x1 - m.x0, dy = m.y1 - m.y0;
+  const t = Math.min(1, Math.max(0, ((x - m.x0) * dx + (y - m.y0) * dy) / (dx * dx + dy * dy)));
+  for (let i = 1; i < m.stops.length; i++) {
+    const [p0, c0] = m.stops[i - 1], [p1, c1] = m.stops[i];
+    if (t <= p1) return mixHex(c0, c1, (t - p0) / (p1 - p0));
+  }
+  return m.stops[m.stops.length - 1][1];
+}
+
+/** Paint the metallic background (gradient + soft top-right highlight + top bevel). */
+function paintMetalBackground(g, m, fullBleed) {
+  const W = CANVAS_W, H = CANVAS_H;
+  g.save();
+  if (fullBleed) { g.beginPath(); g.rect(0, 0, W, H); } else roundedRect(g, 0, 0, W, H, RADIUS);
+  g.clip();
+
+  const lg = g.createLinearGradient(m.x0, m.y0, m.x1, m.y1);
+  for (const [p, c] of m.stops) lg.addColorStop(p, c);
+  g.fillStyle = lg;
+  g.fillRect(0, 0, W, H);
+
+  // Highlight sits top-right, far from the cover and logo, so it never changes their backdrop
+  const hx = W * 0.82, hy = -H * 0.05;
+  const rg = g.createRadialGradient(hx, hy, 0, hx, hy, W * 0.6);
+  rg.addColorStop(0, 'rgba(255,255,255,0.22)');
+  rg.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = rg;
+  g.fillRect(0, 0, W, H);
+
+  if (!fullBleed) {                                   // thin lit edge, brightest along the top
+    const bv = g.createLinearGradient(0, 0, 0, H);
+    bv.addColorStop(0, 'rgba(255,255,255,0.40)');
+    bv.addColorStop(0.35, 'rgba(255,255,255,0.06)');
+    bv.addColorStop(1, 'rgba(255,255,255,0)');
+    g.strokeStyle = bv;
+    g.lineWidth = 3;
+    roundedRect(g, 1.5, 1.5, W - 3, H - 3, RADIUS - 1.5);
+    g.stroke();
+  }
+  g.restore();
+}
 
 /** Rounded-rect path (does not fill or stroke). */
 function roundedRect(g, x, y, w, h, r) {
@@ -959,10 +1096,10 @@ function drawCoverPlaceholder(g, x, y, size, textColor) {
 /** Song title (bold) and artist (regular), vertically centered next to the cover. */
 function drawHeader(g, textColor) {
   const x = PADDING + COVER + HEAD_GAP;
-  const maxWidth = CARD - PADDING - x;
+  const maxWidth = CANVAS_W - PADDING - x;
 
-  const titleSize = 38, titleLine = 46;
-  const artistSize = 30, artistLine = 40;
+  const titleSize = TITLE_SIZE, titleLine = TITLE_LINE;
+  const artistSize = ARTIST_SIZE, artistLine = ARTIST_LINE;
 
   g.textBaseline = 'top';
   g.fillStyle = textColor;
@@ -1049,9 +1186,9 @@ function fitLyricSize(g, text, maxWidth, availHeight) {
 
 /** Draw the lyrics block. Returns the size used and whether it overflows. */
 function drawLyrics(g, textColor) {
-  const maxWidth = CARD - PADDING * 2;
+  const maxWidth = CANVAS_W - PADDING * 2;
   const top = PADDING + COVER + LYRIC_GAP;
-  const bottom = CARD - PADDING - LOGO - LOGO_GAP;
+  const bottom = CANVAS_H - PADDING - LOGO - LOGO_GAP;
   const avail = bottom - top;
 
   const hasText = el.lyrics.value.trim().length > 0;
@@ -1069,7 +1206,8 @@ function drawLyrics(g, textColor) {
   g.textBaseline = 'top';
   letterSpacing(g, -size * 0.02);
 
-  let y = top;
+  // Wide card: centre the block vertically in the space under the header. Square: hug the header.
+  let y = top + (LYRIC_MIDDLE ? Math.max(0, (avail - layout.height) / 2) : 0);
   for (const row of layout.rows) {
     if (row.text) g.fillText(row.text, PADDING, y);
     y += row.h;
@@ -1087,7 +1225,7 @@ function drawLyrics(g, textColor) {
 /** Simplified Spotify logo (disc with 3 curved lines) + "Spotify" wordmark. */
 function drawFooter(g, textColor, bgColor) {
   const x = PADDING;
-  const y = CARD - PADDING - LOGO;
+  const y = CANVAS_H - PADDING - LOGO;
   const r = LOGO / 2;
   const cx = x + r, cy = y + r;
 
@@ -1116,10 +1254,11 @@ function drawFooter(g, textColor, bgColor) {
 
   // Wordmark
   g.fillStyle = textColor;
-  g.font = `700 52px ${FONT}`;
+  g.font = `700 ${WORDMARK}px ${FONT}`;
   g.textBaseline = 'middle';
-  letterSpacing(g, -2);
-  g.fillText('Spotify', x + LOGO + 16, cy + 2);
+  const k = Math.max(1, Math.round(WORDMARK / 26));   // 52px -> 2 (original values)
+  letterSpacing(g, -k);
+  g.fillText('Spotify', x + LOGO + Math.round(LOGO * 0.22), cy + k);
   letterSpacing(g, 0);
   g.textBaseline = 'alphabetic';
 }
@@ -1129,7 +1268,7 @@ function drawFooter(g, textColor, bgColor) {
    ========================================================= */
 
 /**
- * Draw the whole card onto any 1024x1024 2D context.
+ * Draw the whole card onto any CANVAS_W x CANVAS_H 2D context.
  * @param {CanvasRenderingContext2D} g
  * @param {{fullBleed?: boolean}} opts
  *   fullBleed = true  -> fill the entire canvas with the card color (no rounded corners)
@@ -1137,23 +1276,31 @@ function drawFooter(g, textColor, bgColor) {
  */
 function renderCard(g, { fullBleed = false } = {}) {
   const bg = state.color;
-  const textColor = contrastColor(bg);
+  const metal = LAYOUT_KEY === 'wide' ? metalGradient(bg) : null;
+  // Wide: pick text colour from the gradient's centre tone, since that is what sits behind the lyrics
+  const textColor = contrastColor(metal ? metalColorAt(metal, CANVAS_W / 2, CANVAS_H / 2) : bg);
 
-  g.clearRect(0, 0, CARD, CARD);
+  g.clearRect(0, 0, CANVAS_W, CANVAS_H);
 
   // Background
-  g.fillStyle = bg;
-  if (fullBleed) {
-    g.fillRect(0, 0, CARD, CARD);
+  if (metal) {
+    paintMetalBackground(g, metal, fullBleed);
   } else {
-    roundedRect(g, 0, 0, CARD, CARD, RADIUS);
-    g.fill();
+    g.fillStyle = bg;
+    if (fullBleed) {
+      g.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    } else {
+      roundedRect(g, 0, 0, CANVAS_W, CANVAS_H, RADIUS);
+      g.fill();
+    }
   }
 
   drawCover(g, textColor);
   drawHeader(g, textColor);
   const info = drawLyrics(g, textColor);
-  drawFooter(g, textColor, bg);
+  // The logo's three curved lines are cut out in the colour actually underneath the logo
+  const cut = metal ? metalColorAt(metal, PADDING + LOGO / 2, CANVAS_H - PADDING - LOGO / 2) : bg;
+  drawFooter(g, textColor, cut);
   return info;
 }
 
@@ -1708,24 +1855,25 @@ function glareCss() {
 
 /**
  * Paint the glare onto a canvas with createLinearGradient, reproducing the
- * geometry of a CSS linear-gradient(angle) on a square box, using the
+ * geometry of a CSS linear-gradient(angle) on a CANVAS_W x CANVAS_H box, using the
  * "overlay" blend mode, clipped to the rounded card so corners stay clean.
  */
 function paintGlare(g) {
   const a = (GLARE.angle * Math.PI) / 180;
   const dx = Math.sin(a), dy = -Math.cos(a);
-  const half = (Math.abs(CARD * Math.sin(a)) + Math.abs(CARD * Math.cos(a))) / 2;
-  const c = CARD / 2;
+  // CSS gradient-line length for a W x H box: |W sin a| + |H cos a| (this is what makes it fit a 16:9 box)
+  const half = (Math.abs(CANVAS_W * Math.sin(a)) + Math.abs(CANVAS_H * Math.cos(a))) / 2;
+  const cx = CANVAS_W / 2, cy = CANVAS_H / 2;
 
-  const grad = g.createLinearGradient(c - dx * half, c - dy * half, c + dx * half, c + dy * half);
+  const grad = g.createLinearGradient(cx - dx * half, cy - dy * half, cx + dx * half, cy + dy * half);
   for (const [p, color] of GLARE.stops) grad.addColorStop(p, color);
 
   g.save();
-  roundedRect(g, 0, 0, CARD, CARD, RADIUS);
+  roundedRect(g, 0, 0, CANVAS_W, CANVAS_H, RADIUS);
   g.clip();
   g.globalCompositeOperation = 'overlay';
   g.fillStyle = grad;
-  g.fillRect(0, 0, CARD, CARD);
+  g.fillRect(0, 0, CANVAS_W, CANVAS_H);
   g.restore();
 }
 
@@ -1766,7 +1914,7 @@ function invert3(m) {
 }
 
 /**
- * Homography H mapping card-plane points (x, y, 1), centered on the card, to
+ * Homography H mapping card-plane points (x, y, 1), centered on the card (origin = CANVAS_W/2, CANVAS_H/2), to
  * screen points (X*w, Y*w, w), replicating CSS:
  *   perspective(d) rotateX(rx) rotateY(ry) rotateZ(rz)
  * with transform-origin and perspective-origin at the card center.
@@ -1798,16 +1946,16 @@ function project(H, x, y) {
 }
 
 /**
- * Warp a 1024x1024 source canvas through the 3D homography.
+ * Warp a CANVAS_W x CANVAS_H source canvas (rendered at k x) through the 3D homography.
  * Uses inverse mapping with bilinear, alpha-premultiplied sampling so the
  * silhouette edge is anti-aliased against full transparency.
  */
 function warpCard(source, H, k = 1) {
-  const half = CARD / 2;
-  const S = CARD * k;               // source canvas size in px
+  const halfW = CANVAS_W / 2, halfH = CANVAS_H / 2;   // card centre = transform-origin
+  const SW = CANVAS_W * k, SH = CANVAS_H * k;         // source canvas size in px
 
   // Bounding box of the projected card
-  const corners = [[-half, -half], [half, -half], [half, half], [-half, half]]
+  const corners = [[-halfW, -halfH], [halfW, -halfH], [halfW, halfH], [-halfW, halfH]]
     .map(([x, y]) => project(H, x, y));
   const minX = Math.floor(k * Math.min(...corners.map((p) => p.x)));
   const minY = Math.floor(k * Math.min(...corners.map((p) => p.y)));
@@ -1815,7 +1963,7 @@ function warpCard(source, H, k = 1) {
   const maxY = Math.ceil(k * Math.max(...corners.map((p) => p.y)));
   const outW = maxX - minX, outH = maxY - minY;
 
-  const src = source.getContext('2d').getImageData(0, 0, S, S).data;
+  const src = source.getContext('2d').getImageData(0, 0, SW, SH).data;
   const dstImage = new ImageData(outW, outH);
   const dst = dstImage.data;
   const inv = invert3(H);
@@ -1827,10 +1975,10 @@ function warpCard(source, H, k = 1) {
 
       // Screen -> card plane
       const w = inv[6] * X + inv[7] * Y + inv[8];
-      const u = ((inv[0] * X + inv[1] * Y + inv[2]) / w + half) * k - 0.5;
-      const v = ((inv[3] * X + inv[4] * Y + inv[5]) / w + half) * k - 0.5;
+      const u = ((inv[0] * X + inv[1] * Y + inv[2]) / w + halfW) * k - 0.5;
+      const v = ((inv[3] * X + inv[4] * Y + inv[5]) / w + halfH) * k - 0.5;
 
-      if (u < -1 || v < -1 || u > S || v > S) continue;
+      if (u < -1 || v < -1 || u > SW || v > SH) continue;
 
       const x0 = Math.floor(u), y0 = Math.floor(v);
       const fx = u - x0, fy = v - y0;
@@ -1838,13 +1986,13 @@ function warpCard(source, H, k = 1) {
       let r = 0, g = 0, b = 0, a = 0;
       for (let j = 0; j < 2; j++) {
         const yy = y0 + j;
-        if (yy < 0 || yy >= S) continue;      // outside = transparent
+        if (yy < 0 || yy >= SH) continue;      // outside = transparent
         const wy = j ? fy : 1 - fy;
         for (let i = 0; i < 2; i++) {
           const xx = x0 + i;
-          if (xx < 0 || xx >= S) continue;
+          if (xx < 0 || xx >= SW) continue;
           const wgt = (i ? fx : 1 - fx) * wy;
-          const idx = (yy * S + xx) * 4;
+          const idx = (yy * SW + xx) * 4;
           const al = (src[idx + 3] / 255) * wgt;
           r += src[idx] * al;
           g += src[idx + 1] * al;
@@ -1874,16 +2022,17 @@ function warpCard(source, H, k = 1) {
 function renderCard3D() {
   // 1. Flat card (rounded, transparent corners) + glare baked in
   const flat = document.createElement('canvas');
-  flat.width = flat.height = CARD * SS;
+  flat.width = CANVAS_W * SS;
+  flat.height = CANVAS_H * SS;
   const fg = flat.getContext('2d');
-  fg.scale(SS, SS);                       // draw in 1024 units, rasterize at 2x
+  fg.scale(SS, SS);                       // draw in canvas units, rasterize at SSx
   renderCard(fg, { fullBleed: false });
   paintGlare(fg);
 
   // 2. Perspective distance. CSS perspective is in screen px, so scale it by
   //    (canvas px / on-screen px) to match the preview's strength exactly.
   const displayed = el.canvas.offsetWidth || 560;
-  const d = TILT.perspective * (CARD / displayed);
+  const d = TILT.perspective * (CANVAS_W / displayed);
 
   // 3. Warp through the homography
   const H = buildHomography(d);
@@ -1922,7 +2071,8 @@ function renderCard3D() {
 function downloadFlat() {
   try {
     const out = document.createElement('canvas');
-    out.width = out.height = CARD * SS;   // 2048 x 2048 retina export
+    out.width = CANVAS_W * SS;            // retina export (e.g. 2048 x 2048 or 2560 x 1440)
+    out.height = CANVAS_H * SS;
     const g = out.getContext('2d');
     g.scale(SS, SS);
 
@@ -2041,6 +2191,75 @@ function buildSwatches() {
 }
 
 /* =========================================================
+   11B. CARD TEMPLATES (Square / Wide)
+   ========================================================= */
+
+/** Push everything that depends on the active layout: canvas size, CSS vars, labels, redraw. */
+function syncLayout() {
+  el.canvas.width = CANVAS_W;            // resizing clears the bitmap; renderPreview repaints it right after
+  el.canvas.height = CANVAS_H;
+
+  const s = el.scene.style;
+  s.setProperty('--ar', (CANVAS_W / CANVAS_H).toFixed(5));
+  s.setProperty('--max-w', LAYOUT.preview[0] + 'px');
+  s.setProperty('--max-w-sm', LAYOUT.preview[1] + 'px');
+  s.setProperty('--max-w-xs', LAYOUT.preview[2] + 'px');
+  // Circular corners at any aspect ratio: px radius expressed as % of width / % of height
+  s.setProperty('--rr', `${(RADIUS / CANVAS_W * 100).toFixed(4)}% / ${(RADIUS / CANVAS_H * 100).toFixed(4)}%`);
+
+  el.stageBadge.textContent = `Live preview · ${CANVAS_W} × ${CANVAS_H} px`;
+  el.styleHint.textContent = `${LAYOUT.label} · ${CANVAS_W} × ${CANVAS_H}`;
+  el.fitRange.textContent = LYRIC_MIDDLE
+    ? `Shrinks the lyrics (${LYRIC_MAX} px down to ${LYRIC_MIN} px) until they fit in the space under the header.`
+    : `Shrinks the lyrics (${LYRIC_MAX} px down to ${LYRIC_MIN} px) until they fit above the logo.`;
+  document.querySelectorAll('#sizeSeg .seg__btn').forEach((b) => {
+    b.textContent = `${CANVAS_W * b.dataset.scale} × ${CANVAS_H * b.dataset.scale}`;
+  });
+
+  renderPreview();
+}
+
+let templateTimer = 0;
+function setTemplate(key) {
+  // Segmented control reacts instantly (sliding thumb); the card follows
+  el.styleSeg.dataset.active = key === 'wide' ? '1' : '0';
+  el.styleSeg.querySelectorAll('.seg__btn').forEach((b) => {
+    const on = b.dataset.template === key;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-checked', String(on));
+    b.tabIndex = on ? 0 : -1;
+  });
+
+  clearTimeout(templateTimer);
+  if (key === LAYOUT_KEY && !el.scene.classList.contains('switching')) return;
+
+  const swap = () => {
+    cancelAnimationFrame(rafId);
+    applyLayout(key);
+    syncLayout();                                   // new size starts animating via CSS transitions
+    el.scene.classList.remove('switching');         // card fades/scales back in
+    toast(`Card style: ${LAYOUT.label}`);
+  };
+
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return swap();
+  el.scene.classList.add('switching');              // dip out, then swap mid-way
+  templateTimer = setTimeout(swap, 210);
+}
+
+function bindTemplates() {
+  el.styleSeg.querySelectorAll('.seg__btn').forEach((b) =>
+    b.addEventListener('click', () => setTemplate(b.dataset.template)));
+
+  el.styleSeg.addEventListener('keydown', (e) => {
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+    e.preventDefault();
+    const next = (e.key === 'ArrowLeft' || e.key === 'ArrowUp') ? 'square' : 'wide';
+    setTemplate(next);
+    el.styleSeg.querySelector(`[data-template="${next}"]`).focus();
+  });
+}
+
+/* =========================================================
    12. INIT
    ========================================================= */
 
@@ -2048,20 +2267,22 @@ function init() {
   // Glare for the live CSS preview comes from the same data as the export
   el.scene.style.setProperty('--glare', glareCss());
 
+  syncLayout();
+  bindTemplates();
   buildSwatches();
   setColor(state.color);
   bindTilt();
   bindLyricModal();
 
-  // Export size picker (1024 or 2048)
-  document.querySelectorAll('.seg__btn').forEach((b) => b.addEventListener('click', () => {
+  // Export size picker (1x or 2x of the active template)
+  document.querySelectorAll('#sizeSeg .seg__btn').forEach((b) => b.addEventListener('click', () => {
     SS = +b.dataset.scale;
-    document.querySelectorAll('.seg__btn').forEach((o) => {
+    document.querySelectorAll('#sizeSeg .seg__btn').forEach((o) => {
       const on = o === b;
       o.classList.toggle('active', on);
       o.setAttribute('aria-checked', String(on));
     });
-    toast(`Export size: ${CARD * SS} × ${CARD * SS}`);
+    toast(`Export size: ${CANVAS_W * SS} × ${CANVAS_H * SS}`);
   }));
 
   // Text inputs
