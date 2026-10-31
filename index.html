@@ -57,12 +57,20 @@ body {
   height: 100vh;
   height: 100dvh;
   overflow: hidden;                 /* blocks focus-induced page scrolling */
+  /* Ambient glow lives behind the translucent panel so its backdrop-blur has something to frost */
+  background:
+    radial-gradient(460px 380px at 0% 6%, rgba(29,185,84,.32), transparent 70%),
+    radial-gradient(400px 440px at 6% 94%, rgba(115,88,255,.28), transparent 70%),
+    radial-gradient(320px 320px at 32% 50%, rgba(232,17,91,.12), transparent 70%),
+    var(--bg);
 }
 
 /* ---------- Control panel (left) ---------- */
 .panel {
-  background: var(--panel);
-  border-right: 1px solid var(--border);
+  background: rgba(30, 30, 30, 0.8);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(255,255,255,.08);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -95,7 +103,8 @@ body {
 .stage__reset { position:absolute; top:20px; right:24px; z-index:2; background:rgba(255,255,255,.06); backdrop-filter:blur(6px); }
 .scene { cursor: grab; touch-action: none; user-select: none; }
 .scene.dragging { cursor: grabbing; }
-.scene.dragging .card-3d { transition: none; }
+/* While dragging the card trails the pointer a touch, which gives it weight */
+.scene.dragging .card-3d { transition: transform .18s cubic-bezier(.22, .9, .3, 1); }
 .seg { display:grid; grid-template-columns:1fr 1fr; gap:4px; padding:4px; background:var(--panel-2); border:1px solid var(--border); border-radius:500px; }
 .seg__btn { appearance:none; border:0; background:transparent; color:var(--muted); font:500 13px 'Poppins',sans-serif; padding:8px 12px; border-radius:500px; cursor:pointer; transition:background .15s,color .15s,transform .12s; }
 .seg__btn:hover { color:#fff; }
@@ -169,7 +178,7 @@ body.modal-open { overflow: hidden !important; }
 .lm__body::-webkit-scrollbar { display:none; }
 
 /* Stanza blocks */
-.stanza { display:block; width:100%; margin:0 0 16px; padding:16px; text-align:left; white-space:pre-line; appearance:none; border:0; border-radius:12px; background:transparent; color:var(--lm-ui); opacity:.4; font:700 24px/1.3 'Poppins',sans-serif; letter-spacing:-.01em; cursor:pointer; transition:all .2s ease; }
+.stanza { display:block; width:100%; margin:0 0 8px; padding:14px 16px; text-align:left; white-space:pre-line; appearance:none; border:0; border-radius:12px; background:transparent; color:var(--lm-ui); opacity:.4; font:700 24px/1.3 'Poppins',sans-serif; letter-spacing:-.01em; cursor:pointer; transition:all .2s ease; }
 .stanza:hover { opacity:.65; }
 .stanza.selected { background:#000; color:var(--lm-sel); opacity:1; }
 .stanza:focus-visible { outline:3px solid var(--lm-ui); outline-offset:2px; }
@@ -223,7 +232,7 @@ body.modal-open { overflow: hidden !important; }
 
 input[type="text"], textarea {
   width: 100%;
-  background: var(--panel-2);
+  background: #2a2a2a;
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--text);
@@ -233,11 +242,30 @@ input[type="text"], textarea {
   transition: border-color .15s, box-shadow .15s;
 }
 input[type="text"]::placeholder, textarea::placeholder { color: #777; }
+input[type="text"]:hover:not(:focus), textarea:hover:not(:focus) { border-color: #4a4a4a; background: #2d2d2d; }
 input[type="text"]:focus, textarea:focus {
   border-color: var(--green);
-  box-shadow: 0 0 0 3px rgba(29, 185, 84, .18);
+  box-shadow: 0 0 0 4px rgba(29, 185, 84, .14), 0 6px 20px rgba(29, 185, 84, .08);
 }
 textarea { min-height: 150px; resize: vertical; line-height: 1.5; }
+
+/* Dropdown (Glare style) */
+.select {
+  width: 100%;
+  appearance: none; -webkit-appearance: none;
+  background: #2a2a2a url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%23b3b3b3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M2 4l4 4 4-4'/></svg>") no-repeat right 13px center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font: 400 14px 'Poppins', sans-serif;
+  padding: 11px 36px 11px 13px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color .15s, box-shadow .15s, background-color .15s;
+}
+.select:hover:not(:focus) { border-color: #4a4a4a; background-color: #2d2d2d; }
+.select:focus { border-color: var(--green); box-shadow: 0 0 0 4px rgba(29, 185, 84, .14); }
+.select option { background: #2a2a2a; color: #fff; }
 
 .hint { font-size: 11.5px; color: var(--muted); margin-top: 6px; line-height: 1.45; }
 .hint.error { color: #ff7b7b; }
@@ -245,7 +273,7 @@ textarea { min-height: 150px; resize: vertical; line-height: 1.5; }
 
 /* ---------- Search & Auto-fill ---------- */
 .search-card {
-  background: var(--panel-2);
+  background: rgba(255,255,255,.035);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 16px;
@@ -257,7 +285,7 @@ textarea { min-height: 150px; resize: vertical; line-height: 1.5; }
   line-height: 1.45;
   margin-bottom: 12px;
 }
-.search-card input[type="text"] { background: var(--panel); }
+.search-card input[type="text"] { background: #2a2a2a; }
 .search-card .hint:empty { display: none; }
 
 .search-row { display: flex; align-items: stretch; gap: 8px; }
@@ -366,12 +394,28 @@ textarea { min-height: 150px; resize: vertical; line-height: 1.5; }
 .check__text small { display: block; font-size: 11.5px; font-weight: 400; color: var(--muted); margin-top: 2px; }
 
 .range-row { display: flex; align-items: center; gap: 12px; }
-.range-row output { min-width: 48px; text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; }
+.range-row output { display: inline-block; transform-origin: right center; min-width: 48px; text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; }
+.range-row output.pulse { animation: sizePulse .5s cubic-bezier(.2,.8,.2,1); }
+@keyframes sizePulse { 0% { transform: scale(1); } 35% { transform: scale(1.22); color: var(--green); } 100% { transform: scale(1); } }
 input[type="range"] {
-  flex: 1; height: 4px;
+  --p: 30%;                                   /* filled share of the track, set from JS */
+  flex: 1; height: 20px;
+  -webkit-appearance: none; appearance: none;
+  background: transparent;
   accent-color: var(--green);
   cursor: pointer;
 }
+input[type="range"]::-webkit-slider-runnable-track { height: 4px; border-radius: 4px; background: linear-gradient(to right, var(--green) var(--p), #4a4a4a var(--p)); }
+input[type="range"]::-moz-range-track { height: 4px; border-radius: 4px; background: #4a4a4a; }
+input[type="range"]::-moz-range-progress { height: 4px; border-radius: 4px; background: var(--green); }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -6px; border-radius: 50%; background: #fff; border: 0; box-shadow: 0 2px 8px rgba(0,0,0,.5); transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s; }
+input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 0; box-shadow: 0 2px 8px rgba(0,0,0,.5); transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s; }
+input[type="range"]:hover::-webkit-slider-thumb { transform: scale(1.2); }
+input[type="range"]:hover::-moz-range-thumb { transform: scale(1.2); }
+input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.08); box-shadow: 0 0 0 6px rgba(29,185,84,.25), 0 2px 8px rgba(0,0,0,.5); }
+input[type="range"]:active::-moz-range-thumb { transform: scale(1.08); box-shadow: 0 0 0 6px rgba(29,185,84,.25), 0 2px 8px rgba(0,0,0,.5); }
+input[type="range"]:focus-visible { outline: none; }
+input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 5px rgba(29,185,84,.35); }
 .step {
   flex: none; width: 30px; height: 30px;
   border-radius: 50%;
@@ -391,7 +435,9 @@ input[type="range"]:disabled { opacity: .4; cursor: not-allowed; }
   border-top: 1px solid var(--border);
   display: grid;
   gap: 10px;
-  background: var(--panel);
+  background: rgba(16, 16, 16, .5);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
 }
 .btn {
   appearance: none;
@@ -466,7 +512,8 @@ input[type="range"]:disabled { opacity: .4; cursor: not-allowed; }
   position: absolute;
   inset: 0;
   transform: rotateX(var(--rx, 12deg)) rotateY(var(--ry, -15deg)) rotateZ(var(--rz, 2deg));
-  transition: transform .12s ease-out;
+  /* Spring-like settle (slight overshoot) for release, reset and double-click */
+  transition: transform .75s cubic-bezier(.34, 1.56, .64, 1);
   will-change: transform;
 }
 
@@ -491,9 +538,10 @@ input[type="range"]:disabled { opacity: .4; cursor: not-allowed; }
 .card-3d::after {
   content: '';
   position: absolute;
-  inset: 0;
+  opacity: var(--gk, 1);
+  inset: var(--gi, 0%);                 /* glare hugs the themed card box (JS: syncThemeGeom) */
   border-radius: var(--rr, 4.6875%);
-  transition: opacity .2s ease, border-radius .6s cubic-bezier(.2, .8, .2, 1);
+  transition: opacity .2s ease, border-radius .6s cubic-bezier(.2, .8, .2, 1), inset .45s cubic-bezier(.2, .8, .2, 1);
   background: var(--glare, linear-gradient(115deg, transparent 30%, rgba(255,255,255,.5) 45%, transparent 70%));
   mix-blend-mode: overlay;
   pointer-events: none;
@@ -514,6 +562,56 @@ input[type="range"]:disabled { opacity: .4; cursor: not-allowed; }
 .toast.error { border-left-color: #ff5c5c; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
+/* ---------- Micro-interactions ---------- */
+.swatch { transition: transform .22s cubic-bezier(.34,1.56,.64,1), border-color .15s, box-shadow .2s; }
+.swatch:hover { transform: scale(1.18); box-shadow: 0 4px 12px rgba(0,0,0,.45); }
+.swatch:active { transform: scale(.94); }
+.swatch.active { box-shadow: 0 0 0 3px rgba(255,255,255,.16); }
+.custom-color { transition: transform .22s cubic-bezier(.34,1.56,.64,1), box-shadow .2s; }
+.custom-color:hover { transform: scale(1.18); box-shadow: 0 4px 12px rgba(0,0,0,.45); }
+.custom-color:active { transform: scale(.94); }
+.btn { transition: transform .22s cubic-bezier(.34,1.56,.64,1), background .15s, border-color .15s, box-shadow .2s; }
+.btn:hover:not(:disabled) { transform: translateY(-1px); }
+.btn--primary:hover:not(:disabled) { box-shadow: 0 8px 22px rgba(29,185,84,.35); }
+.btn--ghost:hover:not(:disabled) { background: rgba(255,255,255,.05); box-shadow: 0 6px 18px rgba(0,0,0,.3); }
+.btn:active:not(:disabled) { transform: translateY(0) scale(.98); }
+.step:active { transform: scale(.9); }
+.step { transition: border-color .15s, background .15s, transform .15s; }
+.check:hover .check__box { border-color: #8a8a8a; }
+.btn-reset:hover { background: rgba(255,255,255,.06); }
+
+/* ---------- Layout & export extras ---------- */
+.seg3 { grid-template-columns:repeat(3,1fr); }
+.chips { display:flex; flex-wrap:wrap; gap:6px; }
+.chip { cursor:pointer; user-select:none; }
+.chip input { position:absolute; opacity:0; pointer-events:none; }
+.chip span { display:inline-block; padding:6px 12px; border:1px solid var(--border); border-radius:500px; font-size:12px; color:var(--muted); transition:all .15s; }
+.chip input:checked + span { background:rgba(29,185,84,.14); border-color:var(--green); color:#fff; }
+.chip input:focus-visible + span { outline:3px solid rgba(29,185,84,.5); outline-offset:2px; }
+
+/* ---------- Card Theme picker ---------- */
+.theme-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(76px,1fr)); gap:8px; }
+.theme-btn { appearance:none; display:flex; flex-direction:column; align-items:center; gap:8px; padding:14px 4px 10px; border:1px solid var(--border); border-radius:12px; background:linear-gradient(160deg,rgba(255,255,255,.07),rgba(255,255,255,.015)); color:var(--muted); font:500 10.5px 'Poppins',sans-serif; cursor:pointer; transition:transform .22s cubic-bezier(.34,1.56,.64,1), border-color .15s, background .15s, color .15s, box-shadow .2s; }
+.theme-btn svg { width:26px; height:26px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; transition:transform .25s cubic-bezier(.34,1.56,.64,1), color .15s; }
+.theme-btn:hover { color:#fff; border-color:#4a4a4a; transform:translateY(-2px); box-shadow:0 8px 18px rgba(0,0,0,.35); }
+.theme-btn:hover svg { transform:scale(1.1) rotate(-4deg); }
+.theme-btn:active { transform:translateY(0) scale(.97); }
+.theme-btn:focus-visible { outline:3px solid rgba(29,185,84,.5); outline-offset:2px; }
+.theme-btn.active { color:#fff; border-color:var(--green); background:linear-gradient(160deg,rgba(29,185,84,.24),rgba(29,185,84,.06)); box-shadow:0 0 0 1px rgba(29,185,84,.35), 0 8px 22px rgba(29,185,84,.18); }
+.theme-btn.active svg { color:var(--green-hover); }
+@media (prefers-reduced-motion: reduce) { .theme-btn, .theme-btn svg { transition:none; } }
+
+/* Shimmer sweeps over the card while Poppins is still loading */
+.card-3d::before { content: none; }
+.scene.fonts-loading .card-3d::before {
+  content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  border-radius: var(--rr0, 4.6875%);
+  background: linear-gradient(100deg, transparent 25%, rgba(255,255,255,.30) 50%, transparent 75%) 0 0 / 250% 100%;
+  animation: cardShimmer 1.4s linear infinite;
+}
+.scene.fonts-loading .card-3d canvas { opacity: .88; }
+@keyframes cardShimmer { from { background-position: 150% 0; } to { background-position: -100% 0; } }
+
 /* ---------- Responsive ---------- */
 @media (max-width: 900px) {
   body { overflow: auto; }
@@ -529,6 +627,7 @@ input[type="range"]:disabled { opacity: .4; cursor: not-allowed; }
   .card-3d { transition: none; }
   .link-toggle svg { transition: none; }
   .scene, .card-3d canvas, .card-3d::after, .seg--thumb::before { transition: none; }
+  .scene.fonts-loading .card-3d::before, .range-row output.pulse { animation: none; }
 }
 </style>
 </head>
@@ -614,6 +713,13 @@ input[type="range"]:disabled { opacity: .4; cursor: not-allowed; }
         </div>
       </section>
 
+      <!-- Card Theme -->
+      <section class="section" aria-labelledby="themeTitle">
+        <h2 class="section__title" id="themeTitle">Card Theme</h2>
+        <div class="theme-grid" id="themeGrid" role="radiogroup" aria-labelledby="themeTitle"></div>
+        <p class="hint" id="themeHint"></p>
+      </section>
+
       <!-- Appearance -->
       <section class="section">
         <h2 class="section__title">Appearance</h2>
@@ -645,7 +751,7 @@ input[type="range"]:disabled { opacity: .4; cursor: not-allowed; }
           <input type="checkbox" id="autoFit" checked>
           <span class="check__box"><svg viewBox="0 0 12 12" fill="none" stroke="#000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.5l2.6 2.6L10 3.5"/></svg></span>
           <span class="check__text">Auto-fit Text
-            <small id="fitRange">Shrinks the lyrics (64 px down to 24 px) until they fit above the logo.</small>
+            <small id="fitRange">Grows the lyrics to the largest size (up to 120 px) that still fits above the logo.</small>
           </span>
         </label>
 
@@ -670,6 +776,27 @@ input[type="range"]:disabled { opacity: .4; cursor: not-allowed; }
         </label>
       </section>
 
+      <section class="section">
+        <h2 class="section__title">Layout &amp; Light</h2>
+        <div class="field"><span class="label">Lyric alignment</span>
+          <div class="seg seg3" id="alignSeg" role="radiogroup" aria-label="Lyric alignment">
+            <button type="button" class="seg__btn" role="radio" data-align="left">Left</button>
+            <button type="button" class="seg__btn" role="radio" data-align="center">Center</button>
+            <button type="button" class="seg__btn" role="radio" data-align="right">Right</button>
+          </div></div>
+        <div class="field"><span class="label">Show on card</span><div class="chips" id="hideBox"></div></div>
+        <div class="field"><label for="depthRange">Card depth</label>
+          <div class="range-row"><input type="range" id="depthRange" min="0" max="40" step="1" value="0"><output id="depthOut">0 px</output></div>
+          <p class="hint">Extrudes the card, cover art and logo. Works with every theme.</p></div>
+        <div class="field"><label for="glareStyle">Glare style</label>
+          <select id="glareStyle" class="select">
+            <option value="diagonal">Diagonal</option>
+            <option value="spotlight">Spotlight</option>
+            <option value="none">None</option>
+          </select></div>
+        <div class="field"><label for="glareRange">Glare intensity</label>
+          <div class="range-row"><input type="range" id="glareRange" min="0" max="100" step="1" value="100"><output id="glareOut">100%</output></div></div>
+      </section>
     </div>
 
     <footer class="panel__footer">
@@ -677,14 +804,19 @@ input[type="range"]:disabled { opacity: .4; cursor: not-allowed; }
         <button type="button" class="seg__btn" role="radio" aria-checked="false" data-scale="1">1024 × 1024</button>
         <button type="button" class="seg__btn active" role="radio" aria-checked="true" data-scale="2">2048 × 2048</button>
       </div>
+      <div class="seg" id="fmtSeg" role="radiogroup" aria-label="Export format">
+        <button type="button" class="seg__btn" role="radio" data-fmt="png">PNG · transparent</button>
+        <button type="button" class="seg__btn" role="radio" data-fmt="jpg">JPG · solid</button>
+      </div>
       <button class="btn btn--primary" id="downloadFlat" type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-5-5m5 5l5-5M4 20h16"/></svg>
-        Download Flat (2D)
+        <span id="flatLabel">Download Flat (PNG)</span>
       </button>
       <button class="btn btn--ghost" id="download3d" type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l9 5v10l-9 5-9-5V7l9-5z"/><path d="M12 12l9-5M12 12v10M12 12L3 7"/></svg>
         Download 3D
       </button>
+      <button class="btn btn--ghost" id="copyBtn" type="button">Copy to Clipboard</button>
     </footer>
   </aside>
 
@@ -745,7 +877,7 @@ const LAYOUTS = {
     w: 1024, h: 1024, radius: 48, pad: 80,
     cover: 120, coverR: 12, headGap: 36,
     logo: 72, wordmark: 52, logoGap: 36, lyricGap: 64,
-    lyricMin: 24, lyricMax: 64, lyricMiddle: false,   // lyrics hug the header
+    lyricMin: 24, lyricMax: 120, lyricMiddle: false,  // lyrics hug the header; auto-fit hunts for the largest size that fits
     titleSize: 38, titleLine: 46, artistSize: 30, artistLine: 40,
     preview: [560, 480, 420],                          // max preview width: desktop / tablet / phone
   },
@@ -754,7 +886,7 @@ const LAYOUTS = {
     w: 1280, h: 720, radius: 40, pad: 64,
     cover: 160, coverR: 12, headGap: 32,
     logo: 52, wordmark: 38, logoGap: 24, lyricGap: 36,
-    lyricMin: 20, lyricMax: 60, lyricMiddle: true,     // lyrics centred in the space under the header
+    lyricMin: 20, lyricMax: 120, lyricMiddle: true,    // lyrics centred in the space under the header
     titleSize: 44, titleLine: 52, artistSize: 30, artistLine: 40,
     preview: [880, 720, 560],
   },
@@ -803,6 +935,17 @@ const GLARE = {
     [0.72, 'rgba(255,255,255,0)'],
     [1.00, 'rgba(255,255,255,0)'],
   ],
+  // Spotlight: an elliptical radial pool of light. x / y = centre, r = radius (all as a share of the card box).
+  // CSS: radial-gradient(ellipse r% r% at x% y%)  |  canvas: createRadialGradient under a scale(w*r, h*r) transform.
+  spot: {
+    x: 0.30, y: 0.22, r: 0.85,
+    stops: [
+      [0.00, 'rgba(255,255,255,0.70)'],
+      [0.30, 'rgba(255,255,255,0.34)'],
+      [0.65, 'rgba(255,255,255,0.08)'],
+      [1.00, 'rgba(255,255,255,0)'],
+    ],
+  },
 };
 
 const PRESET_COLORS = [
@@ -812,6 +955,32 @@ const PRESET_COLORS = [
 ];
 
 const FONT = "'Poppins', 'Segoe UI', Arial, sans-serif";
+
+/**
+ * Card themes. `icon` is the inner SVG of the picker button.
+ * INSET = [left, top, right, bottom] canvas px reserved around the card for shadows / glow / extrusion;
+ * the card is scaled uniformly to fit the remaining box, so every theme works on Square and Wide.
+ */
+const THEMES = {
+  classic:     { label: 'Classic',    desc: 'Metallic sheen on Wide, flat color on Square.',
+                 icon: '<rect x="3" y="5" width="18" height="14" rx="4"/><path d="M8 15l5-6"/>' },
+  brutalism:   { label: 'Brutalism',  desc: 'Sharp corners, a thick black border and a hard offset shadow.',
+                 icon: '<rect x="3" y="3" width="14" height="14"/><path d="M7 21h14V7"/>' },
+  cyberpunk:   { label: 'Cyberpunk',  desc: 'Near-black card with glowing neon text and borders.',
+                 icon: '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>' },
+  glass:       { label: 'Glass',      desc: 'Frosted glass pane with lit edges over a color glow.',
+                 icon: '<rect x="3" y="7" width="12" height="12" rx="3" opacity=".55"/><rect x="9" y="4" width="12" height="12" rx="3"/>' },
+  clay:        { label: 'Clay',       desc: 'Pastel, puffy and soft with huge rounded corners.',
+                 icon: '<path d="M12 3c5 0 9 3 9 8.5S17.5 21 12 21 3 17 3 11.5 7 3 12 3z"/><path d="M8 8c1-1.4 2.4-2 4-2"/>' },
+  neumorphism: { label: 'Neumorphic', desc: 'Soft extruded surface with light and dark shadows.',
+                 icon: '<rect x="3.5" y="3.5" width="17" height="17" rx="5.5"/><rect x="8" y="8" width="8" height="8" rx="3"/>' },
+};
+const THEME_INSET = {
+  classic: [0, 0, 0, 0], brutalism: [14, 14, 28, 28], cyberpunk: [34, 34, 34, 34],
+  glass: [44, 44, 44, 44], clay: [28, 28, 60, 60], neumorphism: [40, 40, 40, 40],
+};
+/** Cover art, text and logo extrude by this share of the Card Depth slider. */
+const CHILD_DEPTH_RATIO = 1;   // text, cover and logo extrude by the full Card Depth along the same vector (lower it for a shallower relief)
 
 /** Search & auto-fill endpoints. */
 const ITUNES_URL      = 'https://itunes.apple.com/search';
@@ -846,6 +1015,8 @@ const el = {
   stageBadge:  $('stageBadge'),
   styleSeg:    $('styleSeg'),
   styleHint:   $('styleHint'),
+  themeGrid:   $('themeGrid'),
+  themeHint:   $('themeHint'),
   fitRange:    $('fitRange'),
 
 
@@ -867,6 +1038,10 @@ const ctx = el.canvas.getContext('2d');
 
 const state = {
   color: '#A7429A',
+  theme: 'classic',   // key of THEMES
+  align: 'left', fmt: 'png', glare: 100, glareStyle: 'diagonal', cardDepth: 0,
+  hide: { cover: false, title: false, artist: false, logo: false },
+  needsRender: false, // dirty flag: the rAF loop only paints while this is true (cleared at the START of each paint)
   coverImg: null,     // HTMLImageElement once loaded
   coverToken: 0,      // guards against out-of-order image loads
 };
@@ -874,6 +1049,12 @@ const state = {
 /* =========================================================
    3. SMALL UTILITIES
    ========================================================= */
+
+/** Perceived brightness 0-255. */
+function luma(hex) {
+  const { r, g, b } = hexToRgb(hex);
+  return (r * 299 + g * 587 + b * 114) / 1000;
+}
 
 /** Perceived brightness (0-255) -> readable text color. */
 function contrastColor(hex) {
@@ -883,7 +1064,8 @@ function contrastColor(hex) {
 }
 
 function hexToRgb(hex) {
-  const h = hex.replace('#', '');
+  let h = String(hex).trim().replace('#', '');
+  if (h.length === 3) h = h.split('').map((c) => c + c).join('');
   return {
     r: parseInt(h.slice(0, 2), 16),
     g: parseInt(h.slice(2, 4), 16),
@@ -923,9 +1105,23 @@ function saveDataUrl(dataUrl, filename) {
   a.remove();
 }
 
-function fileBaseName(suffix) {
+function fileBaseName(suffix, ext = 'png') {
   const parts = [slugify(el.title.value), slugify(el.artist.value)].filter(Boolean);
-  return (parts.length ? parts.join('_') : 'lyric-card') + suffix + '.png';
+  return (parts.length ? parts.join('_') : 'lyric-card') + suffix + '.' + ext;
+}
+
+/** Promise wrapper around canvas.toBlob (rejects instead of resolving null). */
+function canvasToBlob(canvas, type = 'image/png', quality) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob returned null'))), type, quality);
+  });
+}
+
+/** Download a Blob through a temporary object URL (no giant base64 strings for 2560 x 1440 exports). */
+function saveBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  saveDataUrl(url, filename);
+  setTimeout(() => URL.revokeObjectURL(url), 15000);
 }
 
 /* =========================================================
@@ -941,60 +1137,57 @@ function mixHex(a, b, t) {
 
 /**
  * Wide-card background: the chosen colour pulled toward silver at the top-left,
- * a bright sheen band mid-card, then falling into a deeper tone. Stored as data
- * so the logo cut-out can sample the exact colour underneath it.
+ * a bright sheen band mid-card, then falling into a deeper tone.
+ * The CanvasGradient objects are built once per (template, size, colour) and reused on
+ * every frame and every export (gradients are resolution-independent, so a 2x export
+ * can share them: coordinates are applied through the context's transform at fill time).
  */
-function metalGradient(bg) {
-  const silver = '#D3D6DC';
-  return {
-    x0: 0, y0: 0, x1: CANVAS_W, y1: CANVAS_H,
-    stops: [
-      [0.00, mixHex(bg, silver, 0.40)],
-      [0.30, mixHex(bg, silver, 0.10)],
-      [0.52, mixHex(bg, '#FFFFFF', 0.16)],   // sheen
-      [0.76, mixHex(bg, '#000000', 0.10)],
-      [1.00, mixHex(bg, '#000000', 0.24)],
-    ],
-  };
+let metalCache = { key: '', value: null };
+function getMetal(bg) {
+  const key = `${LAYOUT_KEY}|${CANVAS_W}x${CANVAS_H}|${bg}`;
+  if (metalCache.key === key) return metalCache.value;
+
+  const W = CANVAS_W, H = CANVAS_H, silver = '#D3D6DC';
+
+  const linear = ctx.createLinearGradient(0, 0, W, H);
+  [
+    [0.00, mixHex(bg, silver, 0.40)],
+    [0.30, mixHex(bg, silver, 0.10)],
+    [0.52, mixHex(bg, '#FFFFFF', 0.16)],   // sheen
+    [0.76, mixHex(bg, '#000000', 0.10)],
+    [1.00, mixHex(bg, '#000000', 0.24)],
+  ].forEach(([p, c]) => linear.addColorStop(p, c));
+
+  // Highlight sits top-right, away from the cover and logo
+  const hx = W * 0.82, hy = -H * 0.05;
+  const radial = ctx.createRadialGradient(hx, hy, 0, hx, hy, W * 0.6);
+  radial.addColorStop(0, 'rgba(255,255,255,0.22)');
+  radial.addColorStop(1, 'rgba(255,255,255,0)');
+
+  // Thin lit edge, brightest along the top
+  const bevel = ctx.createLinearGradient(0, 0, 0, H);
+  bevel.addColorStop(0, 'rgba(255,255,255,0.40)');
+  bevel.addColorStop(0.35, 'rgba(255,255,255,0.06)');
+  bevel.addColorStop(1, 'rgba(255,255,255,0)');
+
+  metalCache = { key, value: { linear, radial, bevel } };
+  return metalCache.value;
 }
 
-/** Colour of the metal gradient at a canvas point (matches the canvas gradient's linear RGB blend). */
-function metalColorAt(m, x, y) {
-  const dx = m.x1 - m.x0, dy = m.y1 - m.y0;
-  const t = Math.min(1, Math.max(0, ((x - m.x0) * dx + (y - m.y0) * dy) / (dx * dx + dy * dy)));
-  for (let i = 1; i < m.stops.length; i++) {
-    const [p0, c0] = m.stops[i - 1], [p1, c1] = m.stops[i];
-    if (t <= p1) return mixHex(c0, c1, (t - p0) / (p1 - p0));
-  }
-  return m.stops[m.stops.length - 1][1];
-}
-
-/** Paint the metallic background (gradient + soft top-right highlight + top bevel). */
+/** Paint the metallic background from the cached gradients. */
 function paintMetalBackground(g, m, fullBleed) {
   const W = CANVAS_W, H = CANVAS_H;
   g.save();
   if (fullBleed) { g.beginPath(); g.rect(0, 0, W, H); } else roundedRect(g, 0, 0, W, H, RADIUS);
   g.clip();
 
-  const lg = g.createLinearGradient(m.x0, m.y0, m.x1, m.y1);
-  for (const [p, c] of m.stops) lg.addColorStop(p, c);
-  g.fillStyle = lg;
+  g.fillStyle = m.linear;
+  g.fillRect(0, 0, W, H);
+  g.fillStyle = m.radial;
   g.fillRect(0, 0, W, H);
 
-  // Highlight sits top-right, far from the cover and logo, so it never changes their backdrop
-  const hx = W * 0.82, hy = -H * 0.05;
-  const rg = g.createRadialGradient(hx, hy, 0, hx, hy, W * 0.6);
-  rg.addColorStop(0, 'rgba(255,255,255,0.22)');
-  rg.addColorStop(1, 'rgba(255,255,255,0)');
-  g.fillStyle = rg;
-  g.fillRect(0, 0, W, H);
-
-  if (!fullBleed) {                                   // thin lit edge, brightest along the top
-    const bv = g.createLinearGradient(0, 0, 0, H);
-    bv.addColorStop(0, 'rgba(255,255,255,0.40)');
-    bv.addColorStop(0.35, 'rgba(255,255,255,0.06)');
-    bv.addColorStop(1, 'rgba(255,255,255,0)');
-    g.strokeStyle = bv;
+  if (!fullBleed) {
+    g.strokeStyle = m.bevel;
     g.lineWidth = 3;
     roundedRect(g, 1.5, 1.5, W - 3, H - 3, RADIUS - 1.5);
     g.stroke();
@@ -1005,12 +1198,160 @@ function paintMetalBackground(g, m, fullBleed) {
 /** Rounded-rect path (does not fill or stroke). */
 function roundedRect(g, x, y, w, h, r) {
   g.beginPath();
+  roundedPath(g, x, y, w, h, r);
+}
+
+/** Same outline as roundedRect but WITHOUT beginPath, so it can be added as a sub-path (clip holes, hulls). */
+function roundedPath(g, x, y, w, h, r) {
   g.moveTo(x + r, y);
   g.arcTo(x + w, y,     x + w, y + h, r);
   g.arcTo(x + w, y + h, x,     y + h, r);
   g.arcTo(x,     y + h, x,     y,     r);
   g.arcTo(x,     y,     x + w, y,     r);
   g.closePath();
+}
+
+/* =========================================================
+   VOLUMETRIC EXTRUSION ENGINE
+   The card is a slab. Its back face is projected through the same tilt the preview / export uses, so
+   the visible thickness grows on the side the card turns away from, and vanishes when it faces you.
+   ========================================================= */
+const EXTRUDE_GAIN = 1.5;      // exaggerates thickness so it reads at moderate tilts
+const EXTRUDE_X_SIGN = 1;      // physically correct = 1 (ry < 0 exposes the RIGHT wall). Set to -1 to mirror the horizontal push.
+const LIGHT_DIR = (() => { const x = -0.6, y = -0.8, l = Math.hypot(x, y); return { x: x / l, y: y / l }; })();   // towards the light: top-left
+let EXTRUDE_FIXED = false;     // flat exports have no tilt, so they use a fixed down-right vector (the classic look)
+
+/**
+ * Screen-space offset of the card's BACK face for `depth` logical px of thickness.
+ *   rx > 0 (card tilts up)    -> back pushes DOWN
+ *   ry < 0 (right edge nearer) -> back pushes toward +x (the right wall becomes visible)
+ * Back point (0,0,-d) through Rx·Ry gives (-sin ry, sin rx · cos ry) · d. Rz is undone so the vector lands in card space.
+ * `lit` = 1 when the exposed wall faces the light, -1 when it faces away.
+ */
+function getExtrusionVector(depth = state.cardDepth, fixed = EXTRUDE_FIXED) {
+  if (!(depth > 0)) return { dx: 0, dy: 0, len: 0, lit: 0 };
+  let dx, dy;
+  if (fixed) { dx = dy = depth; }
+  else {
+    const rx = rad(TILT.rx), ry = rad(TILT.ry), rz = rad(TILT.rz);
+    const sx = -Math.sin(ry) * EXTRUDE_X_SIGN * depth * EXTRUDE_GAIN;
+    const sy =  Math.sin(rx) * Math.cos(ry) * depth * EXTRUDE_GAIN;
+    dx = Math.cos(rz) * sx + Math.sin(rz) * sy;
+    dy = -Math.sin(rz) * sx + Math.cos(rz) * sy;
+  }
+  dx = Math.round(dx * 100) / 100; dy = Math.round(dy * 100) / 100;
+  const len = Math.hypot(dx, dy);
+  const lit = len ? (dx * LIGHT_DIR.x + dy * LIGHT_DIR.y) / len : 0;
+  return { dx, dy, len, lit };
+}
+
+/** Wall colour ramp, index 0 = at the face, last = deepest. Lit walls start light, all walls darken with depth (ambient occlusion). */
+const rampCache = new Map();
+function getRamp(P, v, n) {
+  const glass = state.theme === 'glass';
+  const base = glass ? mixHex(state.color, '#ffffff', 0.5) : P.wall;
+  const key = `${base}|${v.lit.toFixed(2)}|${n}|${glass ? 1 : 0}`;
+  let r = rampCache.get(key);
+  if (r) return r;
+  if (rampCache.size > 24) rampCache.clear();
+  const near = v.lit >= 0 ? mixHex(base, '#ffffff', 0.10 + 0.30 * v.lit) : mixHex(base, '#000000', 0.05 - 0.10 * v.lit);
+  const deep = mixHex(base, '#000000', (glass ? 0.20 : 0.40) + 0.25 * (1 - v.lit) / 2);
+  r = [];
+  for (let k = 0; k < n; k++) r.push(mixHex(near, deep, Math.pow((k + 1) / n, 0.85)));
+  rampCache.set(key, r);
+  return r;
+}
+
+/** Per-layer offsets + colours, deepest first. Used by text and the logo, which stamp one copy per layer. */
+const layerMemo = new Map();
+function getLayers(depth, P, maxN) {
+  const v = getExtrusionVector(depth);
+  if (v.len < 0.5) return null;
+  const n = Math.max(1, Math.min(maxN, Math.ceil(v.len)));
+  const key = `${v.dx}|${v.dy}|${P.wall}|${state.theme}|${state.color}|${n}`;
+  let out = layerMemo.get(key);
+  if (out) return out;
+  if (layerMemo.size > 12) layerMemo.clear();
+  const ramp = getRamp(P, v, n);
+  out = [];
+  for (let i = n; i >= 1; i--) out.push({ dx: v.dx * i / n, dy: v.dy * i / n, color: ramp[i - 1] });
+  layerMemo.set(key, out);
+  return out;
+}
+
+/** Directional AO gradient laid over a wall: lit toward the top-left, shaded toward the bottom-right. Cached per geometry + vector. */
+function wallShade(b, v) {
+  return cachedGrad(`wall|${b.x}|${b.y}|${b.w}|${b.h}|${v.dx}|${v.dy}`, () => {
+    const cx = b.x + b.w / 2 + v.dx / 2, cy = b.y + b.h / 2 + v.dy / 2, hd = (Math.hypot(b.w, b.h) + v.len) / 2;
+    const gr = ctx.createLinearGradient(cx + LIGHT_DIR.x * hd, cy + LIGHT_DIR.y * hd, cx - LIGHT_DIR.x * hd, cy - LIGHT_DIR.y * hd);
+    gr.addColorStop(0, 'rgba(255,255,255,0.20)');
+    gr.addColorStop(0.45, 'rgba(255,255,255,0)');
+    gr.addColorStop(0.55, 'rgba(0,0,0,0)');
+    gr.addColorStop(1, 'rgba(0,0,0,0.35)');
+    return gr;
+  });
+}
+
+let wallLayer = null;   // reusable offscreen so Glass walls blend as ONE translucent sheet (stamps would otherwise stack their alpha)
+function getWallLayer(src) {
+  if (!wallLayer) wallLayer = document.createElement('canvas');
+  if (wallLayer.width !== src.width || wallLayer.height !== src.height) { wallLayer.width = src.width; wallLayer.height = src.height; }
+  return wallLayer;
+}
+
+/**
+ * Sweep a shape along the extrusion vector and shade it as a solid wall.
+ *   shape(g, ox, oy) adds the outline displaced by (ox, oy) as a sub-path, with no beginPath.
+ *   b = {x, y, w, h} bounds of the shape (for the lighting gradient).
+ * Stamps are clipped to everything OUTSIDE the shape (even-odd) so translucent faces never show the walls through them.
+ * Glass: the walls are drawn opaque on an offscreen layer, composited at 0.3 alpha, then a bright rim is stroked.
+ */
+function extrudeWalls(g, shape, depth, P, b) {
+  const v = getExtrusionVector(depth);
+  if (v.len < 0.5) return;
+  const glass = state.theme === 'glass';
+  const n = Math.max(1, Math.min(80, Math.ceil(v.len / (v.len > 40 ? 2 : 1))));
+  const ramp = getRamp(P, v, n);
+  const clipOut = (c) => { c.beginPath(); c.rect(-8192, -8192, 16384, 16384); shape(c, 0, 0); c.clip('evenodd'); };
+
+  let t = g, layer = null;
+  if (glass) {
+    layer = getWallLayer(g.canvas);
+    t = layer.getContext('2d');
+    t.setTransform(1, 0, 0, 1, 0, 0);
+    t.clearRect(0, 0, layer.width, layer.height);
+    t.setTransform(g.getTransform());
+  }
+
+  t.save();
+  clipOut(t);
+  for (let i = n; i >= 1; i--) {                                   // deepest first: nearer, lighter stamps overwrite
+    t.fillStyle = ramp[i - 1];
+    t.beginPath(); shape(t, v.dx * i / n, v.dy * i / n); t.fill();
+  }
+  if (b) {                                                         // directional light + AO overlay (few stamps: it is a soft gradient)
+    t.fillStyle = wallShade(b, v);
+    const stride = Math.max(2, Math.ceil(n / 12));
+    for (let i = n; i >= 1; i -= stride) { t.beginPath(); shape(t, v.dx * i / n, v.dy * i / n); t.fill(); }
+    t.beginPath(); shape(t, v.dx, v.dy); t.fill();
+  }
+  t.restore();
+
+  if (glass) {
+    g.save();
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.globalAlpha *= 0.3;                                          // see-through thick edge
+    g.drawImage(layer, 0, 0);
+    g.restore();
+    g.save();
+    clipOut(g);                                                    // bright refracted rim
+    g.lineJoin = 'round';
+    g.strokeStyle = 'rgba(255,255,255,0.8)'; g.lineWidth = 2.5;
+    g.beginPath(); shape(g, v.dx, v.dy); g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,0.4)'; g.lineWidth = 1.5;
+    g.beginPath(); shape(g, 0, 0); g.stroke();
+    g.restore();
+  }
 }
 
 /** Letter spacing where supported (Chrome, Edge, Safari 17+, Firefox 115+). */
@@ -1049,14 +1390,123 @@ function ellipsize(g, text, maxWidth) {
    5. CARD SECTIONS
    ========================================================= */
 
-/** Cover image, center-cropped to a square with rounded corners. */
-function drawCover(g, textColor) {
-  const x = PADDING, y = PADDING;
+/* ---------- Theme helpers ---------- */
+
+let UNIT = 1;   // device px per logical card px: canvas shadows ignore the transform, so we scale them by hand
+function setShadow(g, color, blur, ox = 0, oy = 0) {
+  g.shadowColor = color;
+  g.shadowBlur = blur * UNIT;
+  g.shadowOffsetX = ox * UNIT;
+  g.shadowOffsetY = oy * UNIT;
+}
+function clearShadow(g) {
+  g.shadowColor = 'rgba(0,0,0,0)';
+  g.shadowBlur = 0;
+  g.shadowOffsetX = g.shadowOffsetY = 0;
+}
+
+const themeRadius = (theme) => (theme === 'brutalism' ? 0 : theme === 'clay' ? 64 : RADIUS);
+
+/** Where the card sits inside the canvas for a theme (canvas px), plus its on-canvas corner radius. */
+function cardGeom(theme = state.theme, depth = state.cardDepth) {
+  const [l, t, r, b] = THEME_INSET[theme];
+  const aw = CANVAS_W - l - r, ah = CANVAS_H - t - b;
+  // The walls extend along the tilt-driven vector (any direction), so card + walls must fit the box together
+  const v = getExtrusionVector(depth);
+  const ex = Math.abs(v.dx), ey = Math.abs(v.dy);
+  const s = Math.min(aw / (CANVAS_W + ex), ah / (CANVAS_H + ey));
+  const w = CANVAS_W * s, h = CANVAS_H * s;
+  const totalW = w + ex * s, totalH = h + ey * s;
+  return {
+    s, w, h,
+    x: l + (aw - totalW) / 2 + (v.dx < 0 ? -v.dx * s : 0),
+    y: t + (ah - totalH) / 2 + (v.dy < 0 ? -v.dy * s : 0),
+    r: themeRadius(theme) * s,
+  };
+}
+
+/** Generic gradient cache: built once per (layout, theme, key), reused by every frame and export. */
+const gradCache = new Map();
+function cachedGrad(key, build) {
+  const k = LAYOUT_KEY + '|' + state.theme + '|' + key;
+  let v = gradCache.get(k);
+  if (!v) {
+    if (gradCache.size > 24) gradCache.clear();
+    v = build();
+    gradCache.set(k, v);
+  }
+  return v;
+}
+
+/** Colours + text passes for a theme (memoised per theme/colour). */
+const paletteMemo = { key: '', value: null };
+function getPalette(theme, bg) {
+  const key = theme + '|' + bg;
+  if (paletteMemo.key === key) return paletteMemo.value;
+
+  const P = { text: contrastColor(bg), surface: bg, glow: null, wall: null, neon: null, shadowDark: null, passes: null };
+  switch (theme) {
+    case 'cyberpunk':
+      P.neon = luma(bg) < 90 ? mixHex(bg, '#ffffff', 0.55) : mixHex(bg, '#ffffff', 0.2);
+      P.text = P.neon;
+      P.glow = bg;                                      // ctx.shadowColor = state.color
+      P.wall = mixHex(P.neon, '#000000', 0.62);         // the card is near-black, so tint its sidewalls with the neon
+      break;
+    case 'glass':
+      P.text = '#FFFFFF';
+      break;
+    case 'clay':
+      P.surface = mixHex(bg, '#ffffff', 0.5);
+      P.text = luma(P.surface) > 128 ? mixHex(bg, '#000000', 0.62) : '#FFFFFF';
+      break;
+    case 'neumorphism':
+      P.surface = mixHex(bg, '#ffffff', 0.62);
+      P.text = mixHex(P.surface, '#000000', 0.62);      // a darker shade of the surface
+      P.shadowDark = rgba(mixHex(bg, '#000000', 0.4), 0.55);
+      break;
+  }
+  // Sidewall colour for Card Depth: a darker shade of the surface the theme actually paints
+  if (!P.wall) P.wall = mixHex(P.surface, '#000000', 0.45);
+
+  // Text is drawn as a list of passes (a single main pass; kept as a list so effects can be added later)
+  P.passes = [{ dx: 0, dy: 0, color: P.text, main: true }];
+
+  paletteMemo.key = key;
+  paletteMemo.value = P;
+  return P;
+}
+
+/* ---------- Cover ---------- */
+
+const COVER_RADIUS = { brutalism: 0, glass: 16, clay: 28, neumorphism: 20 };
+const coverRadius = () => (state.theme in COVER_RADIUS ? COVER_RADIUS[state.theme] : COVER_R);
+
+/** Cover image, center-cropped to a square, dressed per theme. */
+function drawCover(g, P) {
+  const th = state.theme, x = PADDING, y = PADDING, r = coverRadius();
+
+  // Depth / shadow layers sit underneath the image
+  const cd = Math.round(state.cardDepth * CHILD_DEPTH_RATIO);
+  if (cd > 0) extrudeWalls(g, (c, ox, oy) => roundedPath(c, x + ox, y + oy, COVER, COVER, r), cd, P, { x, y, w: COVER, h: COVER });
+  if (th === 'clay') {
+    g.save();
+    setShadow(g, rgba(mixHex(state.color, '#000000', 0.55), 0.5), 18, 8, 8);
+    g.fillStyle = P.surface;
+    roundedRect(g, x, y, COVER, COVER, r);
+    g.fill();
+    g.restore();
+  } else if (th === 'neumorphism') {
+    g.save();
+    g.fillStyle = P.surface;
+    roundedRect(g, x, y, COVER, COVER, r);
+    setShadow(g, 'rgba(255,255,255,0.9)', 12, -6, -6); g.fill();
+    setShadow(g, P.shadowDark, 12, 6, 6); g.fill();
+    g.restore();
+  }
 
   g.save();
-  roundedRect(g, x, y, COVER, COVER, COVER_R);
+  roundedRect(g, x, y, COVER, COVER, r);
   g.clip();
-
   const img = state.coverImg;
   if (img) {
     // "object-fit: cover" equivalent
@@ -1065,17 +1515,34 @@ function drawCover(g, textColor) {
     const sy = (img.naturalHeight - side) / 2;
     g.drawImage(img, sx, sy, side, side, x, y, COVER, COVER);
   } else {
-    drawCoverPlaceholder(g, x, y, COVER, textColor);
+    drawCoverPlaceholder(g, x, y, COVER, P.text);
   }
   g.restore();
+
+  // Borders on top of the image
+  if (th === 'brutalism') {
+    g.strokeStyle = '#000000'; g.lineWidth = 6;
+    g.strokeRect(x + 3, y + 3, COVER - 6, COVER - 6);
+  } else if (th === 'cyberpunk') {
+    g.save();
+    setShadow(g, state.color, 15);
+    g.strokeStyle = P.neon; g.lineWidth = 2.5;
+    roundedRect(g, x + 1.25, y + 1.25, COVER - 2.5, COVER - 2.5, r - 1);
+    g.stroke();
+    g.restore();
+  } else if (th === 'glass') {
+    g.strokeStyle = 'rgba(255,255,255,0.55)'; g.lineWidth = 1.5;
+    roundedRect(g, x + 0.75, y + 0.75, COVER - 1.5, COVER - 1.5, r - 1);
+    g.stroke();
+  }
 }
 
-/** Placeholder: soft tinted square with a music note. */
+/** Placeholder: soft tinted square with a music note, tinted with the theme's text colour. */
 function drawCoverPlaceholder(g, x, y, size, textColor) {
-  g.fillStyle = rgba(textColor === '#000000' ? '#000000' : '#FFFFFF', 0.16);
+  g.fillStyle = rgba(textColor, 0.16);
   g.fillRect(x, y, size, size);
 
-  g.fillStyle = rgba(textColor === '#000000' ? '#000000' : '#FFFFFF', 0.55);
+  g.fillStyle = rgba(textColor, 0.55);
   const cx = x + size / 2, cy = y + size / 2, u = size / 100;
 
   // note head
@@ -1093,99 +1560,210 @@ function drawCoverPlaceholder(g, x, y, size, textColor) {
   g.fill();
 }
 
+/* ---------- Text measurement caches ---------- */
+
+/** Bumped when webfonts finish loading: metrics change, so every cached width/layout is stale. */
+let fontGen = 0;
+
+const wordWidths = new Map();            // `${fontGen}|${size}|${word}` -> px width
+let parsedKey = null, parsedParas = null;
+
+/** Width of one word at `size` (the caller has already set g.font + letterSpacing). Cached. */
+function wordWidth(g, word, size) {
+  const key = fontGen + '|' + size + '|' + word;
+  let w = wordWidths.get(key);
+  if (w === undefined) {
+    w = g.measureText(word).width;
+    if (wordWidths.size > 8000) wordWidths.clear();   // keep memory bounded on huge pastes
+    wordWidths.set(key, w);
+  }
+  return w;
+}
+
+/**
+ * Split lyrics into paragraphs of words ONCE per text change.
+ * A blank line becomes `null` (rendered as a half-height gap); leading/trailing gaps are dropped.
+ */
+function parseLyrics(text) {
+  if (text === parsedKey) return parsedParas;
+  const paras = text.split('\n').map((raw) => {
+    const t = raw.trim();
+    return t ? t.split(/\s+/) : null;
+  });
+  while (paras.length && paras[0] === null) paras.shift();
+  while (paras.length && paras[paras.length - 1] === null) paras.pop();
+  parsedKey = text;
+  parsedParas = paras;
+  return paras;
+}
+
+/* ---------- Header (title + artist), memoised ---------- */
+
+const headerCache = { key: '', titleLines: [], artist: '' };
+
 /** Song title (bold) and artist (regular), vertically centered next to the cover. */
-function drawHeader(g, textColor) {
-  const x = PADDING + COVER + HEAD_GAP;
+function drawHeader(g, P) {
+  const x = PADDING + (state.hide.cover ? 0 : COVER + HEAD_GAP);
   const maxWidth = CANVAS_W - PADDING - x;
 
   const titleSize = TITLE_SIZE, titleLine = TITLE_LINE;
   const artistSize = ARTIST_SIZE, artistLine = ARTIST_LINE;
 
-  g.textBaseline = 'top';
-  g.fillStyle = textColor;
+  const title = el.title.value.trim() || 'Song title';
+  const artistText = el.artist.value.trim() || 'Artist';
 
-  // Title: up to 2 lines
+  g.textBaseline = 'top';
   g.font = `700 ${titleSize}px ${FONT}`;
   letterSpacing(g, -0.5);
-  let titleLines = wrapLine(g, (el.title.value.trim() || 'Song title'), maxWidth);
-  if (titleLines.length > 2) {
-    titleLines = titleLines.slice(0, 2);
-    titleLines[1] = ellipsize(g, titleLines[1] + ' …', maxWidth);
+
+  // Wrapping / ellipsizing only re-runs when the text, template or font metrics change
+  const key = `${fontGen}|${LAYOUT_KEY}|${title}|${artistText}`;
+  if (headerCache.key !== key) {
+    let lines = wrapLine(g, title, maxWidth);                       // title: up to 2 lines
+    if (lines.length > 2) {
+      lines = lines.slice(0, 2);
+      lines[1] = ellipsize(g, lines[1] + ' …', maxWidth);
+    }
+    headerCache.titleLines = lines.map((l) => ellipsize(g, l, maxWidth));
+
+    g.font = `400 ${artistSize}px ${FONT}`;
+    letterSpacing(g, 0);
+    headerCache.artist = ellipsize(g, artistText, maxWidth);
+    headerCache.key = key;
+
+    g.font = `700 ${titleSize}px ${FONT}`;
+    letterSpacing(g, -0.5);
   }
-  titleLines = titleLines.map((l) => ellipsize(g, l, maxWidth));
 
-  const total = titleLines.length * titleLine + artistLine;
-  let y = PADDING + COVER / 2 - total / 2;
+  const titleLines = state.hide.title ? [] : headerCache.titleLines;
+  const total = titleLines.length * titleLine + (state.hide.artist ? 0 : artistLine);
+  const y0 = PADDING + COVER / 2 - total / 2;
+  const yArtist = y0 + titleLines.length * titleLine;
 
-  for (const line of titleLines) {
-    g.fillText(line, x, y);
-    y += titleLine;
+  // Extruded backs of the title + artist (deepest first, no glow), then the front face on top
+  const lay = getLayers(Math.round(state.cardDepth * CHILD_DEPTH_RATIO), P, 16);
+  if (lay) {
+    for (const o of lay) {
+      g.fillStyle = o.color;
+      let y = y0;
+      for (const line of titleLines) { g.fillText(line, x + o.dx, y + o.dy); y += titleLine; }
+    }
+    if (!state.hide.artist) {
+      g.font = `400 ${artistSize}px ${FONT}`;
+      letterSpacing(g, 0);
+      for (const o of lay) { g.fillStyle = o.color; g.fillText(headerCache.artist, x + o.dx, yArtist + o.dy); }
+      g.font = `700 ${titleSize}px ${FONT}`;
+      letterSpacing(g, -0.5);
+    }
   }
 
-  // Artist
+  if (P.glow) setShadow(g, P.glow, 15);
+
+  // Title
+  for (const p of P.passes) {
+    g.fillStyle = p.color;
+    let y = y0;
+    for (const line of titleLines) { g.fillText(line, x + p.dx, y + p.dy); y += titleLine; }
+  }
+
   g.font = `400 ${artistSize}px ${FONT}`;
   letterSpacing(g, 0);
-  g.globalAlpha = 0.85;
-  g.fillText(ellipsize(g, el.artist.value.trim() || 'Artist', maxWidth), x, y);
+  for (const p of (state.hide.artist ? [] : P.passes)) {
+    g.globalAlpha = p.main ? 0.85 : 1;
+    g.fillStyle = p.color;
+    g.fillText(headerCache.artist, x + p.dx, yArtist + p.dy);
+  }
   g.globalAlpha = 1;
+  if (P.glow) clearShadow(g);
 }
 
+/* ---------- Lyrics layout + auto-fit ---------- */
+
 /**
- * Lay out lyrics at a given font size.
- * Keeps the user's line breaks (blank lines become half-height gaps) and
- * word-wraps long lines. Returns total height and the widest rendered line.
+ * Lay out lyrics at one font size using cached per-word widths (no measureText per
+ * candidate line, no string building while searching).
+ *   build = false -> fast path used by the fit search: only height + overflow flags
+ *   build = true  -> also returns the rows to draw
+ * `tooWide` is true when a single unbreakable word is wider than the card allows.
  */
-function layoutLyrics(g, text, size, maxWidth) {
+function layoutLyrics(g, paras, size, maxWidth, build = false) {
   const lineHeight = Math.round(size * 1.2);
+  const gap = Math.round(lineHeight * 0.5);
   g.font = `700 ${size}px ${FONT}`;
   letterSpacing(g, -size * 0.02);
+  const space = wordWidth(g, ' ', size);
 
-  const rows = [];
-  let widest = 0;
+  const rows = build ? [] : null;
+  let height = 0, tooWide = false;
 
-  for (const raw of text.split('\n')) {
-    const trimmed = raw.trim();
-    if (!trimmed) {
-      rows.push({ text: '', h: Math.round(lineHeight * 0.5) });
+  for (const words of paras) {
+    if (!words) {                                   // blank line
+      height += gap;
+      if (build) rows.push({ text: '', h: gap });
       continue;
     }
-    for (const line of wrapLine(g, trimmed, maxWidth)) {
-      rows.push({ text: line, h: lineHeight });
-      widest = Math.max(widest, g.measureText(line).width);
+    let line = '', lineW = 0;
+    for (const word of words) {
+      const w = wordWidth(g, word, size);
+      if (w > maxWidth) tooWide = true;
+      if (lineW && lineW + space + w > maxWidth) {  // wrap
+        height += lineHeight;
+        if (build) rows.push({ text: line, h: lineHeight });
+        line = build ? word : '';
+        lineW = w;
+      } else {
+        if (build) line = lineW ? line + ' ' + word : word;
+        lineW = lineW ? lineW + space + w : w;
+      }
     }
+    height += lineHeight;
+    if (build) rows.push({ text: line, h: lineHeight });
   }
 
-  // Drop leading / trailing blank gaps
-  while (rows.length && rows[0].text === '') rows.shift();
-  while (rows.length && rows[rows.length - 1].text === '') rows.pop();
-
-  const height = rows.reduce((sum, r) => sum + r.h, 0);
   letterSpacing(g, 0);
-  return { rows, height, widest };
+  return { rows, height, tooWide };
 }
 
 /**
- * Auto-fit: find the largest size in [LYRIC_MIN, LYRIC_MAX] whose layout fits
- * both the available height (above the logo) and the available width.
- * Binary search keeps it fast enough to run on every keystroke.
+ * Auto-fit ("Maximize Fit"): the LARGEST size in [LYRIC_MIN, LYRIC_MAX] that fits. Overflow is detected
+ * instantly at the minimum size (unbreakable word too wide, or too tall) so the warning
+ * appears without any search; otherwise a binary search over cached word widths hunts for the
+ * maximum threshold, followed by a short probe above it.
  */
-function fitLyricSize(g, text, maxWidth, availHeight) {
-  let lo = LYRIC_MIN, hi = LYRIC_MAX, best = LYRIC_MIN;
-  while (lo <= hi) {
-    const mid = (lo + hi) >> 1;
-    const m = layoutLyrics(g, text, mid, maxWidth);
-    if (m.height <= availHeight && m.widest <= maxWidth) {
-      best = mid;
-      lo = mid + 1;
-    } else {
-      hi = mid - 1;
-    }
+function fitLyricSize(g, paras, maxWidth, avail) {
+  // "Fits" is exactly the test drawLyrics uses for the red warning, so best + 1 is the first size that would turn it red.
+  const fits = (s) => { const m = layoutLyrics(g, paras, s, maxWidth); return !m.tooWide && m.height <= avail; };
+
+  if (!fits(LYRIC_MIN)) return { size: LYRIC_MIN, overflow: true };   // nothing fits: warn immediately
+  if (fits(LYRIC_MAX)) return { size: LYRIC_MAX, overflow: false };   // ceiling reached
+
+  // Invariant: `lo` fits, LYRIC_MAX does not. Hunt for the highest size that still fits.
+  let lo = LYRIC_MIN, hi = LYRIC_MAX - 1;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;                  // upper mid: guarantees progress
+    if (fits(mid)) lo = mid; else hi = mid - 1;
   }
-  return best;
+
+  // Word wrapping is not perfectly monotonic (a size can fit while a smaller neighbour just failed),
+  // so probe a short window above the threshold and keep the largest size that really fits.
+  let best = lo;
+  for (let s = lo + 1, end = Math.min(LYRIC_MAX, lo + 12); s <= end; s++) if (fits(s)) best = s;
+  return { size: best, overflow: false };
+}
+
+/** Fit result is memoised: colour changes, cover loads, tilt etc. never re-run the search. */
+const fitMemo = { key: '', result: null };
+function fitCached(g, paras, text, maxWidth, avail) {
+  const key = `${fontGen}|${LYRIC_MIN}|${LYRIC_MAX}|${maxWidth}|${avail}|${text}`;
+  if (fitMemo.key !== key) {
+    fitMemo.result = fitLyricSize(g, paras, maxWidth, avail);
+    fitMemo.key = key;
+  }
+  return fitMemo.result;
 }
 
 /** Draw the lyrics block. Returns the size used and whether it overflows. */
-function drawLyrics(g, textColor) {
+function drawLyrics(g, P) {
   const maxWidth = CANVAS_W - PADDING * 2;
   const top = PADDING + COVER + LYRIC_GAP;
   const bottom = CANVAS_H - PADDING - LOGO - LOGO_GAP;
@@ -1193,140 +1771,430 @@ function drawLyrics(g, textColor) {
 
   const hasText = el.lyrics.value.trim().length > 0;
   const text = hasText ? el.lyrics.value : 'Your lyrics\nwill appear here';
+  const paras = parseLyrics(text);
 
-  const size = el.autoFit.checked
-    ? fitLyricSize(g, text, maxWidth, avail)
-    : parseInt(el.lyricSize.value, 10);
+  let size, overflow;
+  if (el.autoFit.checked) {
+    ({ size, overflow } = fitCached(g, paras, text, maxWidth, avail));
+  } else {
+    size = parseInt(el.lyricSize.value, 10);
+  }
 
-  const layout = layoutLyrics(g, text, size, maxWidth);
+  const layout = layoutLyrics(g, paras, size, maxWidth, true);
+  if (!el.autoFit.checked) overflow = layout.height > avail || layout.tooWide;
 
-  g.fillStyle = textColor;
   g.globalAlpha = hasText ? 1 : 0.45;
   g.font = `700 ${size}px ${FONT}`;
   g.textBaseline = 'top';
   letterSpacing(g, -size * 0.02);
+  const ax = state.align === 'center' ? CANVAS_W / 2 : state.align === 'right' ? CANVAS_W - PADDING : PADDING;
+  g.textAlign = state.align;
 
   // Wide card: centre the block vertically in the space under the header. Square: hug the header.
-  let y = top + (LYRIC_MIDDLE ? Math.max(0, (avail - layout.height) / 2) : 0);
-  for (const row of layout.rows) {
-    if (row.text) g.fillText(row.text, PADDING, y);
-    y += row.h;
+  const y0 = top + (LYRIC_MIDDLE ? Math.max(0, (avail - layout.height) / 2) : 0);
+
+  // Extruded backs of every row along the tilt vector (deepest first), then the glowing front face
+  const lay = getLayers(Math.round(state.cardDepth * CHILD_DEPTH_RATIO), P, 20);
+  if (lay) {
+    for (const o of lay) {
+      g.fillStyle = o.color;
+      let y = y0;
+      for (const row of layout.rows) {
+        if (row.text) g.fillText(row.text, ax + o.dx, y + o.dy);
+        y += row.h;
+      }
+    }
+  }
+  if (P.glow) setShadow(g, P.glow, 15);
+  for (const p of P.passes) {
+    g.fillStyle = p.color;
+    let y = y0;
+    for (const row of layout.rows) {
+      if (row.text) g.fillText(row.text, ax + p.dx, y + p.dy);
+      y += row.h;
+    }
   }
 
+  if (P.glow) clearShadow(g);
+  g.textAlign = 'left';
   letterSpacing(g, 0);
   g.globalAlpha = 1;
-
-  return {
-    size,
-    overflow: layout.height > avail || layout.widest > maxWidth,
-  };
+  return { size, overflow };
 }
 
-/** Simplified Spotify logo (disc with 3 curved lines) + "Spotify" wordmark. */
-function drawFooter(g, textColor, bgColor) {
-  const x = PADDING;
-  const y = CANVAS_H - PADDING - LOGO;
+/* ---------- Logo (cached offscreen sprite) ---------- */
+
+/** Sprites by colour | size | raster scale. A handful at most (text colour + sidewall colour), redrawn only when one of those changes. */
+const logoSprites = new Map();
+
+/**
+ * The disc with its 3 cut-out arcs, built on its OWN offscreen canvas. 'destination-out' erases
+ * pixels from that canvas only, so the arcs are real transparent holes: whatever is behind the card
+ * (flat colour, metal gradient, glass, sidewalls, a transparent export) shows through, at any raster scale.
+ */
+function getLogoSprite(color, sc) {
+  const key = `${color}|${LOGO}|${sc}`;
+  let off = logoSprites.get(key);
+  if (off) return off;
+  if (logoSprites.size >= 24) logoSprites.clear();
+
   const r = LOGO / 2;
-  const cx = x + r, cy = y + r;
+  off = document.createElement('canvas');
+  off.width = off.height = Math.round(LOGO * sc);
+  const og = off.getContext('2d');
+  og.setTransform(sc, 0, 0, sc, 0, 0);
+  og.globalCompositeOperation = 'source-over';
+  og.globalAlpha = 1;
 
-  // Disc
-  g.fillStyle = textColor;
-  g.beginPath();
-  g.arc(cx, cy, r, 0, Math.PI * 2);
-  g.fill();
+  og.fillStyle = color;                              // opaque disc
+  og.beginPath();
+  og.arc(r, r, r, 0, Math.PI * 2);
+  og.fill();
 
-  // Three curved lines, cut out in the card color
-  g.strokeStyle = bgColor;
-  g.lineCap = 'round';
+  og.globalCompositeOperation = 'destination-out';   // punch the arcs: any opaque stroke colour erases fully
+  og.strokeStyle = '#000000';
+  og.lineCap = 'round';
+  og.lineJoin = 'round';
   const arcs = [
     { x1: -0.56, y1: -0.22, qx:  0.04, qy: -0.46, x2: 0.60, y2: -0.12, w: 0.16 },
     { x1: -0.47, y1:  0.04, qx:  0.02, qy: -0.14, x2: 0.50, y2:  0.14, w: 0.13 },
     { x1: -0.38, y1:  0.27, qx:  0.01, qy:  0.13, x2: 0.40, y2:  0.35, w: 0.10 },
   ];
   for (const a of arcs) {
-    g.lineWidth = a.w * r;
-    g.beginPath();
-    g.moveTo(cx + a.x1 * r, cy + a.y1 * r);
-    g.quadraticCurveTo(cx + a.qx * r, cy + a.qy * r, cx + a.x2 * r, cy + a.y2 * r);
-    g.stroke();
+    og.lineWidth = a.w * r;
+    og.beginPath();
+    og.moveTo(r + a.x1 * r, r + a.y1 * r);
+    og.quadraticCurveTo(r + a.qx * r, r + a.qy * r, r + a.x2 * r, r + a.y2 * r);
+    og.stroke();
   }
-  g.lineCap = 'butt';
+  og.globalCompositeOperation = 'source-over';       // leave the sprite context in a neutral state
 
-  // Wordmark
-  g.fillStyle = textColor;
+  logoSprites.set(key, off);
+  return off;
+}
+
+/** Spotify logo sprite + "Spotify" wordmark (colour = theme text colour: white on Glass, text tone on Neumorphic). */
+function drawFooter(g, P) {
+  const x = PADDING;
+  const y = CANVAS_H - PADDING - LOGO;
+  const cy = y + LOGO / 2;
+
+  // Rasterise the sprite at the destination's scale (2x on hi-res exports) so it stays sharp
+  const sc = Math.max(1, Math.ceil(g.getTransform ? g.getTransform().a : 1));
+  const sprite = getLogoSprite(P.text, sc);
+
+  // Card Depth: stack wall-coloured copies of the same cut-out disc along the tilt vector, deepest first.
+  // Colour changes in 4-layer bands so only a few sprites exist per tilt; the arcs stay open onto the inner walls.
+  const lay = getLayers(Math.round(state.cardDepth * CHILD_DEPTH_RATIO), P, 16);
+  if (lay) {
+    for (let k = 0; k < lay.length; k++) {
+      const o = lay[k];
+      g.drawImage(getLogoSprite(lay[k - (k % 4)].color, sc), x + o.dx, y + o.dy, LOGO, LOGO);
+    }
+  }
+
+  if (P.glow) setShadow(g, P.glow, 15);
+  g.drawImage(sprite, x, y, LOGO, LOGO);
+
   g.font = `700 ${WORDMARK}px ${FONT}`;
   g.textBaseline = 'middle';
   const k = Math.max(1, Math.round(WORDMARK / 26));   // 52px -> 2 (original values)
   letterSpacing(g, -k);
-  g.fillText('Spotify', x + LOGO + Math.round(LOGO * 0.22), cy + k);
+  const wx = x + LOGO + Math.round(LOGO * 0.22);
+  if (lay) {
+    if (P.glow) clearShadow(g);                      // back copies carry no glow
+    for (const o of lay) { g.fillStyle = o.color; g.fillText('Spotify', wx + o.dx, cy + k + o.dy); }
+    if (P.glow) setShadow(g, P.glow, 15);
+  }
+  for (const p of P.passes) {
+    g.fillStyle = p.color;
+    g.fillText('Spotify', wx + p.dx, cy + k + p.dy);
+  }
   letterSpacing(g, 0);
   g.textBaseline = 'alphabetic';
+  if (P.glow) clearShadow(g);
 }
 
 /* =========================================================
-   6. CARD RENDERER
+   6. CARD RENDERER (themes)
    ========================================================= */
+
+/** Layer behind the card: Glass colour glow, Cyberpunk/Neumorphic surface, or a full-bleed fill for flat export. */
+function paintBackdrop(g, theme, bg, P, fullBleed) {
+  if (theme === 'classic') {
+    // With depth the card is smaller than the canvas, so a solid export needs the colour behind it
+    if (fullBleed && state.cardDepth > 0) { g.fillStyle = bg; g.fillRect(0, 0, CANVAS_W, CANVAS_H); }
+    return;
+  }
+  const wants = fullBleed || theme === 'cyberpunk' || theme === 'glass' || theme === 'neumorphism';
+  if (!wants) return;                                // Brutalism / 3D / Clay keep transparent margins
+
+  const W = CANVAS_W, H = CANVAS_H;
+  g.save();
+  if (fullBleed) { g.beginPath(); g.rect(0, 0, W, H); } else roundedRect(g, 0, 0, W, H, RADIUS);
+  g.clip();
+
+  if (theme === 'glass') {
+    const gl = cachedGrad('backdrop|' + bg, () => {
+      const base = ctx.createLinearGradient(0, 0, W, H);
+      base.addColorStop(0, mixHex(bg, '#000000', 0.35));
+      base.addColorStop(1, mixHex(bg, '#000000', 0.72));
+      const o1 = ctx.createRadialGradient(W * 0.2, H * 0.2, 0, W * 0.2, H * 0.2, W * 0.55);
+      o1.addColorStop(0, rgba(mixHex(bg, '#ffffff', 0.12), 0.95));
+      o1.addColorStop(1, rgba(bg, 0));
+      const accent = mixHex(bg, '#00D4FF', 0.55);
+      const o2 = ctx.createRadialGradient(W * 0.86, H * 0.86, 0, W * 0.86, H * 0.86, W * 0.5);
+      o2.addColorStop(0, rgba(accent, 0.85));
+      o2.addColorStop(1, rgba(accent, 0));
+      return { base, o1, o2 };
+    });
+    g.fillStyle = gl.base; g.fillRect(0, 0, W, H);
+    g.fillStyle = gl.o1;   g.fillRect(0, 0, W, H);
+    g.fillStyle = gl.o2;   g.fillRect(0, 0, W, H);
+  } else {
+    g.fillStyle = theme === 'cyberpunk' ? '#0a0a0a' : theme === 'neumorphism' ? P.surface : bg;
+    g.fillRect(0, 0, W, H);
+  }
+  g.restore();
+}
+
+/** The card itself, in logical (0..W, 0..H) coordinates. */
+function paintCardBody(g, theme, bg, P, fullBleed) {
+  const W = CANVAS_W, H = CANVAS_H, R = themeRadius(theme), D = state.cardDepth;
+
+  // Card Depth (all themes): sidewalls first, then the face is painted on top by the theme below
+  if (D > 0) extrudeWalls(g, (c, ox, oy) => roundedPath(c, ox, oy, W, H, R), D, P, { x: 0, y: 0, w: W, h: H });
+
+  switch (theme) {
+    case 'brutalism': {
+      if (D === 0) {                                 // the hard offset shadow gives way to real sidewalls when depth is on
+        g.fillStyle = '#000000';
+        g.fillRect(12, 12, W, H);                    // hard shadow: 12px right, 12px down, no blur
+      }
+      g.fillStyle = bg;
+      g.fillRect(0, 0, W, H);
+      g.strokeStyle = '#000000';
+      g.lineWidth = 8;
+      g.strokeRect(4, 4, W - 8, H - 8);              // 8px border, drawn inside the card
+      break;
+    }
+
+    case 'cyberpunk': {
+      g.fillStyle = '#0a0a0a';
+      roundedRect(g, 0, 0, W, H, R); g.fill();
+      g.save();
+      setShadow(g, bg, 15);                          // neon glow
+      g.strokeStyle = P.neon;
+      g.lineWidth = 4;
+      roundedRect(g, 2, 2, W - 4, H - 4, R - 2);
+      g.stroke(); g.stroke();                        // second pass intensifies the bloom
+      g.restore();
+      g.strokeStyle = rgba(P.neon, 0.22);            // faint inner hairline
+      g.lineWidth = 1.5;
+      roundedRect(g, 14, 14, W - 28, H - 28, R - 12);
+      g.stroke();
+      break;
+    }
+
+    case 'glass': {
+      const gl = cachedGrad('shine', () => {
+        const shine = ctx.createLinearGradient(0, 0, W, H);
+        shine.addColorStop(0, 'rgba(255,255,255,0.30)');
+        shine.addColorStop(0.32, 'rgba(255,255,255,0.10)');
+        shine.addColorStop(0.5, 'rgba(255,255,255,0)');
+        shine.addColorStop(1, 'rgba(255,255,255,0.05)');
+        return { shine };
+      });
+      g.fillStyle = 'rgba(255, 255, 255, 0.1)';
+      roundedRect(g, 0, 0, W, H, R); g.fill();
+      g.save();
+      roundedRect(g, 0, 0, W, H, R); g.clip();
+      g.fillStyle = gl.shine;                        // diagonal shine (no ctx.filter anywhere)
+      g.fillRect(0, 0, W, H);
+      g.restore();
+
+      const o = 0.75;                                // inset glass edge
+      g.lineWidth = 1.5; g.lineCap = 'round';
+      g.strokeStyle = 'rgba(255,255,255,0.16)';
+      roundedRect(g, o, o, W - 2 * o, H - 2 * o, R - o); g.stroke();
+      g.strokeStyle = 'rgba(255,255,255,0.85)';      // top + left: bright
+      g.beginPath();
+      g.moveTo(o, H - R); g.lineTo(o, R); g.arcTo(o, o, R, o, R - o); g.lineTo(W - R, o);
+      g.stroke();
+      g.strokeStyle = 'rgba(0,0,0,0.30)';            // bottom + right: dark
+      g.beginPath();
+      g.moveTo(W - o, R); g.lineTo(W - o, H - R); g.arcTo(W - o, H - o, W - R, H - o, R - o); g.lineTo(R, H - o);
+      g.stroke();
+      g.lineCap = 'butt';
+      break;
+    }
+
+    case 'clay': {
+      const cl = cachedGrad('clay|' + bg, () => {
+        const inner = ctx.createLinearGradient(0, 0, W, H);
+        inner.addColorStop(0, mixHex(P.surface, '#ffffff', 0.6));
+        inner.addColorStop(0.6, mixHex(P.surface, '#ffffff', 0.12));
+        inner.addColorStop(1, P.surface);
+        const rim = ctx.createLinearGradient(0, 0, W, H);
+        rim.addColorStop(0, 'rgba(0,0,0,0)');
+        rim.addColorStop(0.5, 'rgba(0,0,0,0)');
+        rim.addColorStop(1, rgba(mixHex(bg, '#000000', 0.6), 0.32));
+        return { inner, rim };
+      });
+      g.save();
+      setShadow(g, rgba(mixHex(bg, '#000000', 0.55), 0.55), 44, 18, 18);   // soft dark shadow, bottom right
+      g.fillStyle = P.surface;
+      roundedRect(g, 0, 0, W, H, R); g.fill();
+      g.restore();
+
+      g.save();
+      roundedRect(g, 0, 0, W, H, R); g.clip();
+      g.fillStyle = cl.inner;                        // lighter puffy shape, pushed to the top left
+      roundedRect(g, 12, 12, W - 38, H - 38, R - 12); g.fill();
+      g.strokeStyle = cl.rim;                        // shaded rim bottom right
+      g.lineWidth = 30;
+      roundedRect(g, 0, 0, W, H, R); g.stroke();
+      g.restore();
+      break;
+    }
+
+    case 'neumorphism': {
+      g.save();
+      g.fillStyle = P.surface;                       // card colour == backdrop colour
+      roundedRect(g, 0, 0, W, H, R);
+      setShadow(g, 'rgba(255,255,255,0.95)', 26, -13, -13); g.fill();   // light, top left
+      setShadow(g, P.shadowDark, 26, 13, 13); g.fill();                 // dark, bottom right
+      g.restore();
+      break;
+    }
+
+    default: {                                       // classic: metallic on Wide, flat on Square
+      const bleed = fullBleed && D === 0;            // with depth the card is inset, so it keeps its rounded shape
+      if (LAYOUT_KEY === 'wide') {
+        paintMetalBackground(g, getMetal(bg), bleed);
+      } else {
+        g.fillStyle = bg;
+        if (bleed) g.fillRect(0, 0, W, H);
+        else { roundedRect(g, 0, 0, W, H, RADIUS); g.fill(); }
+      }
+    }
+  }
+}
 
 /**
  * Draw the whole card onto any CANVAS_W x CANVAS_H 2D context.
- * @param {CanvasRenderingContext2D} g
- * @param {{fullBleed?: boolean}} opts
- *   fullBleed = true  -> fill the entire canvas with the card color (no rounded corners)
- *   fullBleed = false -> rounded card, corners stay transparent
+ * @param {{fullBleed?: boolean}} opts  fullBleed = fill the whole canvas (no transparent corners)
  */
-function renderCard(g, { fullBleed = false } = {}) {
-  const bg = state.color;
-  const metal = LAYOUT_KEY === 'wide' ? metalGradient(bg) : null;
-  // Wide: pick text colour from the gradient's centre tone, since that is what sits behind the lyrics
-  const textColor = contrastColor(metal ? metalColorAt(metal, CANVAS_W / 2, CANVAS_H / 2) : bg);
+function renderCard(g, { fullBleed = false, flat = false } = {}) {
+  EXTRUDE_FIXED = flat;                               // flat exports have no tilt: fixed vector
+  const theme = state.theme, bg = state.color;
+  const P = getPalette(theme, bg);
+  const geo = cardGeom(theme);
+  UNIT = (g.getTransform ? g.getTransform().a : 1) * geo.s;   // before we add our own scale
 
   g.clearRect(0, 0, CANVAS_W, CANVAS_H);
+  paintBackdrop(g, theme, bg, P, fullBleed);
 
-  // Background
-  if (metal) {
-    paintMetalBackground(g, metal, fullBleed);
-  } else {
-    g.fillStyle = bg;
-    if (fullBleed) {
-      g.fillRect(0, 0, CANVAS_W, CANVAS_H);
-    } else {
-      roundedRect(g, 0, 0, CANVAS_W, CANVAS_H, RADIUS);
-      g.fill();
-    }
-  }
-
-  drawCover(g, textColor);
-  drawHeader(g, textColor);
-  const info = drawLyrics(g, textColor);
-  // The logo's three curved lines are cut out in the colour actually underneath the logo
-  const cut = metal ? metalColorAt(metal, PADDING + LOGO / 2, CANVAS_H - PADDING - LOGO / 2) : bg;
-  drawFooter(g, textColor, cut);
+  g.save();
+  g.translate(geo.x, geo.y);
+  g.scale(geo.s, geo.s);                              // content is always laid out in 1024x1024 / 1280x720 space
+  paintCardBody(g, theme, bg, P, fullBleed);
+  if (!state.hide.cover) drawCover(g, P);
+  if (!(state.hide.title && state.hide.artist)) drawHeader(g, P);
+  const info = drawLyrics(g, P);
+  if (!state.hide.logo) drawFooter(g, P);
+  g.restore();
+  clearShadow(g);
+  EXTRUDE_FIXED = false;
   return info;
+}
+
+const prefersReduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/** Keep the slider's filled track in sync with its value. */
+function paintRange() {
+  const min = +el.lyricSize.min, max = +el.lyricSize.max;
+  el.lyricSize.style.setProperty('--p', ((el.lyricSize.value - min) / (max - min) * 100).toFixed(2) + '%');
+}
+
+/** Glide the slider thumb to `to` (auto-fit changes) instead of letting it jump. */
+let sliderTween = 0;
+function tweenSlider(to) {
+  cancelAnimationFrame(sliderTween);
+  const from = +el.lyricSize.value;
+  if (from === to || prefersReduced()) { el.lyricSize.value = to; paintRange(); return; }
+  const t0 = performance.now(), dur = 240;
+  const step = (now) => {
+    const p = Math.min(1, (now - t0) / dur);
+    el.lyricSize.value = from + (to - from) * (1 - Math.pow(1 - p, 3));   // ease-out cubic
+    paintRange();
+    if (p < 1) sliderTween = requestAnimationFrame(step);
+  };
+  sliderTween = requestAnimationFrame(step);
+}
+
+/** Subtle pulse on the size read-out when auto-fit changes it. */
+function pulseSize() {
+  const o = el.lyricSizeOut;
+  o.classList.remove('pulse');
+  void o.offsetWidth;                 // restart the animation
+  o.classList.add('pulse');
+}
+
+let lastSize = null, lastHint = '';
+
+const FIT_MSG_AUTO   = 'Text overflows the card. Try shortening them.';
+const FIT_MSG_MANUAL = 'Text overflows the card. Lower the size or enable Auto-fit.';
+
+/** Red `.hint.error` warning in #fitHint (DOM is only touched when the message changes). */
+function updateFitHint(overflow) {
+  const msg = overflow ? (el.autoFit.checked ? FIT_MSG_AUTO : FIT_MSG_MANUAL) : '';
+  if (msg === lastHint) return;
+  lastHint = msg;
+  el.fitHint.textContent = msg;
+  el.fitHint.className = msg ? 'hint error' : 'hint';
 }
 
 /** Re-render the live preview and sync auto-fit UI. */
 function renderPreview() {
+  state.needsRender = false;                          // clean BEFORE painting: a change that lands mid-render re-flags itself
   const info = renderCard(ctx, { fullBleed: false });
 
-  if (el.autoFit.checked) el.lyricSize.value = info.size;
-  el.lyricSizeOut.textContent = info.size + ' px';
-
-  if (info.overflow) {
-    el.fitHint.textContent = el.autoFit.checked
-      ? 'These lyrics are too long, even at the minimum size. Try shortening them.'
-      : 'Text overflows the card. Lower the size or enable Auto-fit.';
-    el.fitHint.className = 'hint error';
-  } else {
-    el.fitHint.textContent = '';
-    el.fitHint.className = 'hint';
+  const label = info.size + ' px';
+  if (el.lyricSizeOut.textContent !== label) el.lyricSizeOut.textContent = label;
+  if (el.autoFit.checked && info.size !== lastSize) {
+    tweenSlider(info.size);
+    if (lastSize !== null) pulseSize();
   }
+  lastSize = info.size;
+
+  updateFitHint(info.overflow);
 }
 
-/** Coalesce rapid input events into one draw per frame. */
-let rafId = 0;
+/*
+  Dirty-flag render loop. Anything that changes the card calls scheduleRender(), which raises
+  `state.needsRender` and books at most ONE animation frame. The frame callback returns
+  immediately when nothing is dirty, so idle = zero canvas work.
+*/
+let rafPending = false, rafId = 0;
+
+function frame() {
+  rafPending = false;
+  if (!state.needsRender) return;
+  renderPreview();
+}
+
 function scheduleRender() {
+  state.needsRender = true;
+  queueSave();
+  if (!rafPending) { rafPending = true; rafId = requestAnimationFrame(frame); }
+}
+
+/** Drop any queued frame (used right before a synchronous render, e.g. template swap). */
+function cancelScheduledRender() {
+  state.needsRender = false;
+  rafPending = false;
   cancelAnimationFrame(rafId);
-  rafId = requestAnimationFrame(renderPreview);
 }
 
 /* =========================================================
@@ -1666,7 +2534,8 @@ function onLinkToggle() {
    ========================================================= */
 
 const LYRICS_API = 'https://api.lyrics.ovh/v1';
-const LINES_PER_BLOCK = 2;   // each block holds 2 lines (so max 2 blocks)
+const LINES_PER_BLOCK = 1;   // line-by-line: every block is exactly one lyric line
+const MAX_LINES = 4;         // selection limit
 const NOT_FOUND  = 'Lyrics not found for this song. You can type them manually.';
 
 /** Modal state. Mutated only through the functions below. */
@@ -1674,7 +2543,7 @@ const lm = {
   open: false,
   token: 0,            // guards against out-of-order fetches
   blocks: [],          // stanza strings
-  selected: [],        // indices into `blocks` (max 3)
+  selected: [],        // indices into `blocks` (max MAX_LINES lines)
   trigger: null,       // element to return focus to on close
   els: {
     root: $('lyricModal'), body: $('lmBody'), sub: $('lmSub'),
@@ -1685,8 +2554,8 @@ const lm = {
 /** Strip "(feat. X)", "[Remastered]" and " - Live" suffixes so the lookup matches more often. */
 const cleanTitle = (t) => t.replace(/\s*[\(\[].*?[\)\]]/g, '').replace(/\s+-\s+.*$/, '').trim();
 
-/** Blend two hex colors: t = 0 -> a, t = 1 -> b. */
-function mixHex(a, b, t) {
+/** Blend two hex colors for the modal theme (returns rgb()): t = 0 -> a, t = 1 -> b. */
+function mixHexModal(a, b, t) {
   const A = hexToRgb(a), B = hexToRgb(b);
   const c = (k) => Math.round(A[k] + (B[k] - A[k]) * t);
   return `rgb(${c('r')}, ${c('g')}, ${c('b')})`;
@@ -1700,14 +2569,14 @@ function themeModal() {
   root.setProperty('--lm-bg', bg);                       // modal background = card color
   root.setProperty('--lm-ui', contrastColor(bg));        // header text + faded unselected text
   // Selected text = the card color (e.g. pink) on black; near-black cards get a light tint so it stays readable
-  root.setProperty('--lm-sel', lum < 60 ? mixHex(bg, '#ffffff', 0.8) : bg);
+  root.setProperty('--lm-sel', lum < 60 ? mixHexModal(bg, '#ffffff', 0.8) : bg);
 }
 
 /**
- * Split raw lyrics into blocks of exactly 2 lines (the last block may be shorter).
+ * Split raw lyrics into blocks of LINES_PER_BLOCK (= 1) lines each.
  *  1. Split the whole text by single newlines.
  *  2. Trim every line and drop empty ones.
- *  3. Group the cleaned lines 2 at a time.
+ *  3. Group the cleaned lines LINES_PER_BLOCK at a time (one block per line).
  */
 function parseStanzas(raw) {
   const lines = String(raw || '')
@@ -1763,7 +2632,7 @@ function lmSync() {
     r.setAttribute('aria-pressed', String(on));
   });
   const lines = lmLineCount();
-  lm.els.sub.textContent = lines ? `${lines} line${lines === 1 ? '' : 's'} selected` : 'Tap lines to select';
+  lm.els.sub.textContent = lines ? `${lines} of ${MAX_LINES} lines selected` : `Tap up to ${MAX_LINES} lines`;
   lm.els.apply.disabled = lm.selected.length === 0;
 }
 
@@ -1776,6 +2645,14 @@ function lmToggle(block) {
   if (at >= 0) {
     lm.selected.splice(at, 1);
   } else {
+    if (lmLineCount() + lm.blocks[i].split('\n').length > MAX_LINES) {   // 5th line: refuse, shake, explain
+      block.classList.remove('shake');
+      void block.offsetWidth;                                           // restart the animation if it is still running
+      block.classList.add('shake');
+      block.addEventListener('animationend', () => block.classList.remove('shake'), { once: true });
+      toast(`You can select up to ${MAX_LINES} lines`);
+      return;
+    }
     lm.selected.push(i);
   }
   lmSync();
@@ -1819,7 +2696,7 @@ function closeLyricModal() {
 
 function applyLyrics() {
   if (!lm.selected.length) return;
-  el.lyrics.value = [...lm.selected].sort((a, b) => a - b).map((i) => lm.blocks[i]).join('\n');   // single breaks keep lines tightly packed
+  el.lyrics.value = [...lm.selected].sort((a, b) => a - b).map((i) => lm.blocks[i]).join('\n');   // the (up to 4) chosen lines, in song order, joined with \n
   closeLyricModal();
   scheduleRender();                             // auto-fit re-runs inside renderPreview
   toast('Lyrics applied');
@@ -1847,33 +2724,57 @@ function bindLyricModal() {
    8. GLARE (shared by CSS preview and PNG export)
    ========================================================= */
 
-/** CSS string for the preview's ::after background. */
+/** CSS value for the preview's ::after background (`none` hides it). Built from the same GLARE data as the export. */
 function glareCss() {
+  if (state.glareStyle === 'none') return 'none';
+  if (state.glareStyle === 'spotlight') {
+    const sp = GLARE.spot;
+    const stops = sp.stops.map(([p, c]) => `${c} ${(p * 100).toFixed(1)}%`).join(', ');
+    return `radial-gradient(ellipse ${(sp.r * 100).toFixed(1)}% ${(sp.r * 100).toFixed(1)}% at ${(sp.x * 100).toFixed(1)}% ${(sp.y * 100).toFixed(1)}%, ${stops})`;
+  }
   const stops = GLARE.stops.map(([p, c]) => `${c} ${(p * 100).toFixed(1)}%`).join(', ');
   return `linear-gradient(${GLARE.angle}deg, ${stops})`;
 }
 
 /**
- * Paint the glare onto a canvas with createLinearGradient, reproducing the
- * geometry of a CSS linear-gradient(angle) on a CANVAS_W x CANVAS_H box, using the
- * "overlay" blend mode, clipped to the rounded card so corners stay clean.
+ * Paint the glare onto a canvas, reproducing the CSS preview, with the "overlay" blend mode,
+ * clipped to the rounded card FACE so corners (and any Card Depth sidewalls) stay clean.
+ *   diagonal  -> createLinearGradient matching a CSS linear-gradient(angle) on the card box
+ *   spotlight -> createRadialGradient, stretched to the box so it matches the CSS ellipse
+ *   none      -> nothing
+ * Intensity (state.glare) drives globalAlpha for both.
  */
 function paintGlare(g) {
-  const a = (GLARE.angle * Math.PI) / 180;
-  const dx = Math.sin(a), dy = -Math.cos(a);
-  // CSS gradient-line length for a W x H box: |W sin a| + |H cos a| (this is what makes it fit a 16:9 box)
-  const half = (Math.abs(CANVAS_W * Math.sin(a)) + Math.abs(CANVAS_H * Math.cos(a))) / 2;
-  const cx = CANVAS_W / 2, cy = CANVAS_H / 2;
-
-  const grad = g.createLinearGradient(cx - dx * half, cy - dy * half, cx + dx * half, cy + dy * half);
-  for (const [p, color] of GLARE.stops) grad.addColorStop(p, color);
+  if (state.glareStyle === 'none' || state.glare <= 0) return;
+  const geo = cardGeom();                              // glare follows the themed card face
 
   g.save();
-  roundedRect(g, 0, 0, CANVAS_W, CANVAS_H, RADIUS);
+  roundedRect(g, geo.x, geo.y, geo.w, geo.h, geo.r);
   g.clip();
   g.globalCompositeOperation = 'overlay';
-  g.fillStyle = grad;
-  g.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  g.globalAlpha = state.glare / 100;
+
+  if (state.glareStyle === 'spotlight') {
+    const sp = GLARE.spot;
+    const px = geo.x + geo.w * sp.x, py = geo.y + geo.h * sp.y;
+    const rx = geo.w * sp.r, ry = geo.h * sp.r;        // CSS `ellipse r% r%`: radii are shares of width / height
+    g.translate(px, py);
+    g.scale(rx, ry);                                   // unit-radius gradient becomes the ellipse
+    const grad = g.createRadialGradient(0, 0, 0, 0, 0, 1);
+    for (const [p, color] of sp.stops) grad.addColorStop(p, color);
+    g.fillStyle = grad;
+    g.fillRect((geo.x - px) / rx, (geo.y - py) / ry, geo.w / rx, geo.h / ry);
+  } else {
+    const a = (GLARE.angle * Math.PI) / 180;
+    const dx = Math.sin(a), dy = -Math.cos(a);
+    // CSS gradient-line length for a w x h box: |w sin a| + |h cos a| (this is what makes it fit a 16:9 box)
+    const half = (Math.abs(geo.w * Math.sin(a)) + Math.abs(geo.h * Math.cos(a))) / 2;
+    const cx = geo.x + geo.w / 2, cy = geo.y + geo.h / 2;
+    const grad = g.createLinearGradient(cx - dx * half, cy - dy * half, cx + dx * half, cy + dy * half);
+    for (const [p, color] of GLARE.stops) grad.addColorStop(p, color);
+    g.fillStyle = grad;
+    g.fillRect(geo.x, geo.y, geo.w, geo.h);
+  }
   g.restore();
 }
 
@@ -2067,8 +2968,9 @@ function renderCard3D() {
    10. DOWNLOADS
    ========================================================= */
 
-/** Flat 2D: re-draw offscreen, honoring the Transparent Background checkbox. */
-function downloadFlat() {
+/** Flat 2D: re-draw offscreen at export scale. PNG honours Transparent Background; JPG is always solid. */
+async function downloadFlat() {
+  el.btnFlat.disabled = true;
   try {
     const out = document.createElement('canvas');
     out.width = CANVAS_W * SS;            // retina export (e.g. 2048 x 2048 or 2560 x 1440)
@@ -2076,15 +2978,43 @@ function downloadFlat() {
     const g = out.getContext('2d');
     g.scale(SS, SS);
 
-    // Checked  -> rounded card only, corners transparent
-    // Unchecked -> whole canvas filled with the background color
-    renderCard(g, { fullBleed: !el.transparent.checked });
+    const jpg = state.fmt === 'jpg';
+    // PNG, Transparent checked  -> rounded card only, corners transparent
+    // PNG, unchecked / any JPG  -> whole canvas filled with the card colour (JPG has no alpha)
+    renderCard(g, { fullBleed: jpg || !el.transparent.checked, flat: true });
 
-    saveDataUrl(out.toDataURL('image/png'), fileBaseName(''));
-    toast('Flat card downloaded');
+    const blob = jpg ? await canvasToBlob(out, 'image/jpeg', 0.95) : await canvasToBlob(out, 'image/png');
+    saveBlob(blob, fileBaseName('', jpg ? 'jpg' : 'png'));
+    toast(`Flat card downloaded (${jpg ? 'JPG' : 'PNG'})`);
   } catch (err) {
     console.error(err);
     toast('Export failed. The cover image may block cross-origin use.');
+  } finally {
+    el.btnFlat.disabled = false;
+  }
+}
+
+/** Copy the flat card to the clipboard as PNG (the one image type every browser's clipboard accepts). */
+async function copyCard() {
+  const btn = $('copyBtn');
+  if (!navigator.clipboard || typeof ClipboardItem === 'undefined' || !navigator.clipboard.write) {
+    toast('Copy failed. This browser cannot copy images; use Download instead.');
+    return;
+  }
+  btn.disabled = true;
+  try {
+    const out = document.createElement('canvas');
+    out.width = CANVAS_W * SS; out.height = CANVAS_H * SS;
+    const g = out.getContext('2d'); g.scale(SS, SS);
+    renderCard(g, { fullBleed: !el.transparent.checked, flat: true });
+    // ClipboardItem is created synchronously inside the click and handed a Blob PROMISE: this is what keeps Safari happy
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': canvasToBlob(out, 'image/png') })]);
+    toast(state.fmt === 'jpg' ? 'Copied to clipboard (as PNG)' : 'Copied to clipboard');
+  } catch (err) {
+    console.error(err);
+    toast('Copy failed. Your browser may block clipboard images.');
+  } finally {
+    btn.disabled = false;
   }
 }
 
@@ -2094,11 +3024,12 @@ function download3D() {
   toast('Rendering 3D card…');
 
   // Yield a frame so the toast paints before the heavy pixel work
-  setTimeout(() => {
+  setTimeout(async () => {
     try {
       const out = renderCard3D();
-      saveDataUrl(out.toDataURL('image/png'), fileBaseName('_3d'));
-      toast('3D card downloaded');
+      const blob = await canvasToBlob(out, 'image/png');
+      saveBlob(blob, fileBaseName('_3d'));
+      toast(state.fmt === 'jpg' ? '3D card downloaded (always PNG, it needs transparency)' : '3D card downloaded');
     } catch (err) {
       console.error(err);
       toast('Export failed. The cover image may block cross-origin use.');
@@ -2114,7 +3045,14 @@ function download3D() {
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
 /** Push TILT into the CSS preview (the export reads TILT directly). */
+let lastTiltKey = null;
 function applyTilt() {
+  // The extrusion vector follows rx / ry, so the canvas must repaint in the same frame as the CSS transform
+  const k = TILT.rx + '|' + TILT.ry + '|' + TILT.rz;
+  if (k !== lastTiltKey) {
+    lastTiltKey = k;
+    if (state.cardDepth > 0) { cancelScheduledRender(); syncThemeGeom(); renderPreview(); }
+  }
   el.scene.style.perspective = TILT.perspective + 'px';
   el.scene.style.setProperty('--rx', TILT.rx + 'deg');
   el.scene.style.setProperty('--ry', TILT.ry + 'deg');
@@ -2123,8 +3061,12 @@ function applyTilt() {
 
 /** Mouse / touch control: drag = X/Y tilt, Shift+drag = Z, wheel = depth. */
 function bindTilt() {
-  let drag = null;
+  let drag = null, tiltRaf = 0;
   const sc = el.scene;
+  // Pointer events can fire faster than the display refreshes: apply at most once per frame
+  const queueTilt = () => {
+    if (!tiltRaf) tiltRaf = requestAnimationFrame(() => { tiltRaf = 0; applyTilt(); });
+  };
 
   sc.addEventListener('pointerdown', (e) => {
     drag = { x: e.clientX, y: e.clientY, rx: TILT.rx, ry: TILT.ry, rz: TILT.rz };
@@ -2140,7 +3082,7 @@ function bindTilt() {
       TILT.ry = clamp(Math.round(drag.ry + dx * 0.3), -75, 75);
       TILT.rx = clamp(Math.round(drag.rx - dy * 0.3), -75, 75);
     }
-    applyTilt();
+    queueTilt();
   });
   const end = () => { drag = null; sc.classList.remove('dragging'); };
   sc.addEventListener('pointerup', end);
@@ -2149,7 +3091,7 @@ function bindTilt() {
   sc.addEventListener('wheel', (e) => {
     e.preventDefault();
     TILT.perspective = clamp(Math.round(TILT.perspective + e.deltaY * 2), 400, 3000);
-    applyTilt();
+    queueTilt();
   }, { passive: false });
 
   const reset = () => { Object.assign(TILT, TILT_DEFAULT); applyTilt(); toast('Tilt reset'); };
@@ -2204,19 +3146,169 @@ function syncLayout() {
   s.setProperty('--max-w', LAYOUT.preview[0] + 'px');
   s.setProperty('--max-w-sm', LAYOUT.preview[1] + 'px');
   s.setProperty('--max-w-xs', LAYOUT.preview[2] + 'px');
-  // Circular corners at any aspect ratio: px radius expressed as % of width / % of height
-  s.setProperty('--rr', `${(RADIUS / CANVAS_W * 100).toFixed(4)}% / ${(RADIUS / CANVAS_H * 100).toFixed(4)}%`);
+  syncThemeGeom();
 
   el.stageBadge.textContent = `Live preview · ${CANVAS_W} × ${CANVAS_H} px`;
   el.styleHint.textContent = `${LAYOUT.label} · ${CANVAS_W} × ${CANVAS_H}`;
   el.fitRange.textContent = LYRIC_MIDDLE
-    ? `Shrinks the lyrics (${LYRIC_MAX} px down to ${LYRIC_MIN} px) until they fit in the space under the header.`
-    : `Shrinks the lyrics (${LYRIC_MAX} px down to ${LYRIC_MIN} px) until they fit above the logo.`;
+    ? `Grows the lyrics to the largest size (up to ${LYRIC_MAX} px) that still fits in the space under the header.`
+    : `Grows the lyrics to the largest size (up to ${LYRIC_MAX} px) that still fits above the logo.`;
   document.querySelectorAll('#sizeSeg .seg__btn').forEach((b) => {
     b.textContent = `${CANVAS_W * b.dataset.scale} × ${CANVAS_H * b.dataset.scale}`;
   });
 
   renderPreview();
+}
+
+/* =========================================================
+   11D. SETTINGS: persistence + extra controls
+   ========================================================= */
+const LS_KEY = 'lyric-card-settings-v1';
+let saveTimer = 0;
+function queueSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify({ color: state.color, theme: state.theme, align: state.align,
+        fmt: state.fmt, glare: state.glare, glareStyle: state.glareStyle, cardDepth: state.cardDepth, hide: state.hide, autoFit: el.autoFit.checked, size: +el.lyricSize.value, scale: SS }));
+    } catch (e) { /* storage blocked: ignore */ }
+  }, 300);
+}
+function loadSettings() {
+  try {
+    const d = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
+    if (!d) return;
+    if (/^#[0-9a-f]{6}$/i.test(d.color)) state.color = d.color.toUpperCase();
+    if (THEMES[d.theme]) state.theme = d.theme;
+    if (['left', 'center', 'right'].includes(d.align)) state.align = d.align;
+    if (d.fmt === 'jpg') state.fmt = 'jpg';
+    if (typeof d.glare === 'number') state.glare = Math.min(100, Math.max(0, d.glare));
+    if (['diagonal', 'spotlight', 'none'].includes(d.glareStyle)) state.glareStyle = d.glareStyle;
+    if (typeof d.cardDepth === 'number') state.cardDepth = Math.min(40, Math.max(0, Math.round(d.cardDepth)));
+    if (d.hide) for (const k of Object.keys(state.hide)) state.hide[k] = !!d.hide[k];
+    if (typeof d.autoFit === 'boolean') el.autoFit.checked = d.autoFit;
+    if (d.size >= 16 && d.size <= 120) el.lyricSize.value = d.size;
+    if (d.scale === 1 || d.scale === 2) SS = d.scale;
+  } catch (e) { /* corrupt data: ignore */ }
+}
+
+function initControls() {
+  const syncSeg = (root, attr, key) => root.querySelectorAll('button').forEach((b) => {
+    const on = b.dataset[attr] === state[key];
+    b.classList.toggle('active', on); b.setAttribute('aria-checked', String(on));
+  });
+  const bindSeg = (id, attr, key, onChange) => {
+    const root = $(id);
+    root.addEventListener('click', (e) => {
+      const b = e.target.closest('button'); if (!b) return;
+      state[key] = b.dataset[attr]; syncSeg(root, attr, key); onChange();
+    });
+    syncSeg(root, attr, key);
+  };
+  bindSeg('alignSeg', 'align', 'align', scheduleRender);
+  // The export format never changes the preview canvas: persist it and relabel the button, nothing else
+  const syncFmt = () => { $('flatLabel').textContent = `Download Flat (${state.fmt.toUpperCase()})`; };
+  bindSeg('fmtSeg', 'fmt', 'fmt', () => { syncFmt(); queueSave(); toast(state.fmt === 'jpg' ? 'JPG export: solid background' : 'PNG export: transparent corners supported'); });
+  syncFmt();
+
+  const box = $('hideBox');
+  box.innerHTML = [['cover', 'Cover art'], ['title', 'Song title'], ['artist', 'Artist'], ['logo', 'Spotify logo']]
+    .map(([k, t]) => `<label class="chip"><input type="checkbox" data-hide="${k}" ${state.hide[k] ? '' : 'checked'}><span>${t}</span></label>`).join('');
+  box.addEventListener('change', (e) => { state.hide[e.target.dataset.hide] = !e.target.checked; scheduleRender(); });
+
+  const paintTrack = (input) => input.style.setProperty('--p', ((input.value - input.min) / (input.max - input.min) * 100).toFixed(2) + '%');
+
+  // Card Depth: changes the card geometry, so the canvas repaints (one coalesced rAF per frame while dragging)
+  const dr = $('depthRange');
+  const applyDepth = () => { dr.value = state.cardDepth; $('depthOut').textContent = state.cardDepth + ' px'; paintTrack(dr); };
+  dr.addEventListener('input', () => {
+    state.cardDepth = +dr.value; applyDepth();
+    syncThemeGeom();                                   // the CSS glare box follows the (smaller) card face
+    scheduleRender();
+  });
+  applyDepth();
+
+  // Glare lives in CSS on the live preview, so style / intensity never touch the canvas: zero repaint lag while dragging
+  const gr = $('glareRange'), gs = $('glareStyle');
+  const applyGlare = () => {
+    const s = el.scene.style;
+    s.setProperty('--glare', glareCss());
+    s.setProperty('--gk', state.glare / 100);
+    gr.value = state.glare; paintTrack(gr);
+    gr.disabled = state.glareStyle === 'none';
+    gs.value = state.glareStyle;
+    $('glareOut').textContent = state.glare + '%';
+  };
+  gr.addEventListener('input', () => { state.glare = +gr.value; applyGlare(); queueSave(); });
+  gs.addEventListener('change', () => { state.glareStyle = gs.value; applyGlare(); queueSave(); });
+  applyGlare();
+
+  $('copyBtn').addEventListener('click', copyCard);
+  document.querySelectorAll('#sizeSeg .seg__btn').forEach((o) => {
+    const on = +o.dataset.scale === SS; o.classList.toggle('active', on); o.setAttribute('aria-checked', String(on));
+  });
+  el.autoFit.addEventListener('change', queueSave);
+  paintRange();
+}
+
+/* =========================================================
+   11C. CARD THEMES (picker + CSS glare geometry)
+   ========================================================= */
+
+/** Glare box + corner radius follow the themed card (circular corners at any aspect ratio). */
+function syncThemeGeom() {
+  const geo = cardGeom();
+  const pc = (v) => (v * 100).toFixed(4) + '%';
+  const s = el.scene.style;
+  s.setProperty('--gi', `${pc(geo.y / CANVAS_H)} ${pc((CANVAS_W - geo.x - geo.w) / CANVAS_W)} ${pc((CANVAS_H - geo.y - geo.h) / CANVAS_H)} ${pc(geo.x / CANVAS_W)}`);
+  s.setProperty('--rr', `${pc(geo.r / geo.w)} / ${pc(geo.r / geo.h)}`);
+  s.setProperty('--rr0', `${pc(RADIUS / CANVAS_W)} / ${pc(RADIUS / CANVAS_H)}`);   // full-canvas radius (shimmer)
+  el.scene.dataset.theme = state.theme;
+}
+
+function setTheme(key, silent = false) {
+  if (!THEMES[key]) return;
+  state.theme = key;
+  el.themeGrid.querySelectorAll('.theme-btn').forEach((b) => {
+    const on = b.dataset.theme === key;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-checked', String(on));
+    b.tabIndex = on ? 0 : -1;
+  });
+  el.themeHint.textContent = THEMES[key].desc;
+  syncThemeGeom();
+  scheduleRender();
+  if (!silent) toast(`Card theme: ${THEMES[key].label}`);
+}
+
+function buildThemes() {
+  const frag = document.createDocumentFragment();
+  for (const [key, t] of Object.entries(THEMES)) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'theme-btn';
+    b.dataset.theme = key;
+    b.setAttribute('role', 'radio');
+    b.setAttribute('aria-checked', 'false');
+    b.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${t.icon}</svg><span>${t.label}</span>`;
+    frag.appendChild(b);
+  }
+  el.themeGrid.appendChild(frag);
+
+  el.themeGrid.addEventListener('click', (e) => {
+    const b = e.target.closest('.theme-btn');
+    if (b) setTheme(b.dataset.theme);
+  });
+  el.themeGrid.addEventListener('keydown', (e) => {
+    const dir = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+    if (!dir) return;
+    e.preventDefault();
+    const keys = Object.keys(THEMES);
+    const next = keys[(keys.indexOf(state.theme) + dir + keys.length) % keys.length];
+    setTheme(next);
+    el.themeGrid.querySelector(`[data-theme="${next}"]`).focus();
+  });
+  setTheme(state.theme, true);
 }
 
 let templateTimer = 0;
@@ -2234,7 +3326,7 @@ function setTemplate(key) {
   if (key === LAYOUT_KEY && !el.scene.classList.contains('switching')) return;
 
   const swap = () => {
-    cancelAnimationFrame(rafId);
+    cancelScheduledRender();
     applyLayout(key);
     syncLayout();                                   // new size starts animating via CSS transitions
     el.scene.classList.remove('switching');         // card fades/scales back in
@@ -2267,8 +3359,13 @@ function init() {
   // Glare for the live CSS preview comes from the same data as the export
   el.scene.style.setProperty('--glare', glareCss());
 
+  loadSettings();
+  el.scene.classList.add('fonts-loading');     // shimmer until Poppins is ready
+  paintRange();
   syncLayout();
   bindTemplates();
+  buildThemes();
+  initControls();
   buildSwatches();
   setColor(state.color);
   bindTilt();
@@ -2286,7 +3383,10 @@ function init() {
   }));
 
   // Text inputs
-  [el.title, el.artist, el.lyrics].forEach((i) => i.addEventListener('input', scheduleRender));
+  [el.title, el.artist].forEach((i) => i.addEventListener('input', scheduleRender));
+  // Lyrics: 50ms trailing debounce so fast typing / pasting triggers one fit, not one per key
+  let lyricTimer = 0;
+  el.lyrics.addEventListener('input', () => { clearTimeout(lyricTimer); lyricTimer = setTimeout(scheduleRender, 50); });
   el.coverUrl.addEventListener('input', onCoverInput);
   el.coverUrl.addEventListener('change', () => loadCover(el.coverUrl.value.trim()));
 
@@ -2320,7 +3420,9 @@ function init() {
   // Manual size: any change switches Auto-fit off so the size stays where you put it
   const setManualSize = (value) => {
     const min = +el.lyricSize.min, max = +el.lyricSize.max;
+    cancelAnimationFrame(sliderTween);              // a manual change always wins over a glide in progress
     el.lyricSize.value = Math.min(max, Math.max(min, value));
+    paintRange();
     el.autoFit.checked = false;
     scheduleRender();
   };
@@ -2332,10 +3434,23 @@ function init() {
   el.btnFlat.addEventListener('click', downloadFlat);
   el.btn3d.addEventListener('click', download3D);
 
-  // First paint, then repaint once Poppins is ready so metrics are correct
+  // First paint (fallback font), then repaint once Poppins is ready so metrics are correct.
+  // fontGen++ invalidates every cached width / layout; the shimmer is removed at the same time.
   renderPreview();
+  let fontsDone = false;
+  const finishFonts = () => {
+    if (fontsDone) return;
+    fontsDone = true;
+    fontGen++;
+    el.scene.classList.remove('fonts-loading');
+    scheduleRender();
+  };
   const fontLoads = [400, 500, 600, 700].map((w) => document.fonts.load(`${w} 32px Poppins`));
-  Promise.all(fontLoads).catch(() => {}).then(() => document.fonts.ready).then(scheduleRender);
+  Promise.all(fontLoads).catch(() => {}).then(() => document.fonts.ready).then(finishFonts);
+  setTimeout(finishFonts, 5000);                                    // never shimmer forever (offline etc.)
+  if (document.fonts.addEventListener) {                            // late loads: re-measure once more
+    document.fonts.addEventListener('loadingdone', () => { if (fontsDone) { fontGen++; scheduleRender(); } });
+  }
 }
 
 init();
